@@ -63,6 +63,8 @@ containers in `.github/workflows/ci.yml`.
 | Thousands of packages | Commands are batched to stay under `ARG_MAX`. Apt indexes are streamed rather than fully parsed. |
 | Running as root with Homebrew present | Brew refuses root, so matsya skips brew under root and tells you to run `--managers brew` as your user. |
 | Running `apply` without root | Refused for system managers. `--dry-run` works as any user. |
+| Termux on Android | Detected from `$PREFIX`/`TERMUX_VERSION` (or Android without `/etc/os-release`). dpkg and apt state are read under `$PREFIX`, architectures keep Termux's names (`aarch64`, `arm`), the platform is `termux-rolling-<arch>`, and `apply` needs no root. HTTPS uses Termux's CA bundle. |
+| No `sudo` on the machine (containers, minimal hosts) | `install.sh` uses `sudo` or `doas` only if needed, otherwise installs to `~/.local/bin`. |
 | `apply --roots-only` | The final verification and `check --roots-only` compare only manually installed packages, because dependencies were left to the solver. |
 | zypper with an empty `AutoInstalled` file | Every package counts as user-installed (the file lists automatic ones). |
 | No TTY (CI) | `apply` refuses to change anything unless `--yes` is given. |

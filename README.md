@@ -73,7 +73,12 @@ cargo install matsya                              # from crates.io
 cargo install --locked --git https://github.com/dmdhrumilmistry/matsya
 ```
 
-Release binaries (Linux x86_64/aarch64 as static musl builds, macOS arm64/x86_64)
+The installer needs no root: it uses `sudo` or `doas` only if the target
+directory isn't writable, and otherwise installs to `~/.local/bin`. In
+**Termux** it installs the native Android build into `$PREFIX/bin`.
+
+Release binaries (Linux x86_64/aarch64 as static musl builds, macOS arm64/x86_64,
+Android aarch64/x86_64/armv7 for Termux)
 come with SHA-256 files and GitHub build provenance attestations:
 
 ```sh
@@ -120,6 +125,7 @@ including when Nix, snapshot mirrors or image digests are the better choice.
 | **dnf5 / dnf / yum** | Fedora, RHEL, Rocky, Alma, Amazon Linux | ✓ | ✓ | Fedora Koji (payload digest) | Fedora · Rocky 8, 9 · Amazon Linux 2 · arm64 |
 | **zypper** | openSUSE, SLES | ✓ | ✓ | no public archive | Tumbleweed |
 | **apk** | Alpine, Wolfi | ✓ | ✓ | no public archive | Alpine · arm64 |
+| **apt** in Termux | Android (Termux) | ✓ | ✓ | no public archive | termux-docker x86_64 · aarch64 |
 | **pacman** | Arch, Manjaro, EndeavourOS | ✓ | ✓ | Arch Linux Archive (SHA-256) | Arch |
 | **Homebrew** | macOS, Linux | ✓ | ✓ | `brew extract` from homebrew-core history | macOS · Linux |
 
