@@ -23,7 +23,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -36,7 +36,7 @@ jobs:
     name: security audit (RustSec)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit
@@ -51,7 +51,7 @@ jobs:
           - { target: x86_64-unknown-linux-musl, runner: ubuntu-latest }
           - { target: aarch64-unknown-linux-musl, runner: ubuntu-24.04-arm }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -71,7 +71,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: matsya-x86_64-unknown-linux-musl
@@ -116,7 +116,7 @@ jobs:
           - { arch: aarch64, image: "fedora:latest" }
           - { arch: aarch64, image: "alpine:latest" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: name
         run: echo "name=$(echo '${{ matrix.image }}-${{ matrix.arch }}' | tr ':/' '--')" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
@@ -152,7 +152,7 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_CLEANUP: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         if: runner.os == 'macOS'
       - name: Build (macOS)

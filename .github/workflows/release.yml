@@ -22,7 +22,7 @@ jobs:
           - { target: aarch64-apple-darwin, runner: macos-latest, asset: matsya-aarch64-macos }
           - { target: x86_64-apple-darwin, runner: macos-latest, asset: matsya-x86_64-macos }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Tag must match Cargo.toml version
         run: |
