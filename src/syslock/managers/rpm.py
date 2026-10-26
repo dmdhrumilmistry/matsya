@@ -118,9 +118,29 @@ class Rpm(Manager):
             return str(pkg["name"])
         return f"{pkg['name']}.{pkg['arch']}"
 
+    def _tags(self) -> Set[str]:
+        if self._tag_cache is None:
+            self._tag_cache = set(run(["rpm", "--querytags"], check=False).split())
+        return self._tag_cache
+
+    _tag_cache: Optional[Set[str]] = None
+
     def _qa(self) -> List[Dict[str, object]]:
-        qf = "\\t".join("%{" + f + "}" for f in _QF_FIELDS) + "\\n"
-        return parse_rpm_qa(run(["rpm", "-qa", "--qf", qf]))
+        tags = self._tags()
+        fields = list(_QF_FIELDS)
+        # RPM 6 renamed PAYLOADDIGEST to PAYLOADSHA256; RPM < 4.14 has neither.
+        # An unknown tag makes rpm print an error yet exit 0 with no output.
+        payload = next((t for t in ("PAYLOADSHA256", "PAYLOADDIGEST") if t in tags), None)
+        fields[fields.index("PAYLOADDIGEST")] = payload or "NAME"
+        qf = "\\t".join("%{" + f + "}" for f in fields) + "\\n"
+        pkgs = parse_rpm_qa(run(["rpm", "-qa", "--qf", qf]))
+        if not payload:
+            for p in pkgs:
+                p.pop("payloadDigest", None)
+        if not pkgs and run(["rpm", "-qa"], check=False).strip():
+            raise SyslockError("rpm returned packages but none could be parsed; "
+                               "please report this with the output of `rpm --version`")
+        return pkgs
 
     def _user_installed(self, fe: Optional[str]) -> Optional[Set[str]]:
         """Names (name.arch) the user asked for, or None if unknown."""
@@ -144,7 +164,8 @@ class Rpm(Manager):
 
     def _deps(self, pkgs: List[Dict[str, object]], plat) -> None:
         sep = "\x1f"
-        qf = f"[%{{NAME}}.%{{ARCH}}{sep}P{sep}%{{PROVIDENAME}}\\n][%{{NAME}}.%{{ARCH}}{sep}R{sep}%{{REQUIRENAME}}\\n]"
+        # %{=TAG} repeats a scalar inside an array iteration (required by RPM 6).
+        qf = f"[%{{=NAME}}.%{{=ARCH}}{sep}P{sep}%{{PROVIDENAME}}\\n][%{{=NAME}}.%{{=ARCH}}{sep}R{sep}%{{REQUIRENAME}}\\n]"
         out = run(["rpm", "-qa", "--qf", qf], check=False)
         by_na = {f"{p['name']}.{p['arch']}": self.key_of(p, plat) for p in pkgs}
         requires: Dict[str, List[List[str]]] = {}
@@ -165,7 +186,7 @@ class Rpm(Manager):
         # One pass over the file database; `rpm -qf` on many paths cannot be
         # matched back reliably when a file has several owners.
         if files:
-            out = run(["rpm", "-qa", "--qf", f"[%{{NAME}}.%{{ARCH}}{sep}%{{FILENAMES}}\\n]"], check=False)
+            out = run(["rpm", "-qa", "--qf", f"[%{{=NAME}}.%{{=ARCH}}{sep}%{{FILENAMES}}\\n]"], check=False)
             for line in out.splitlines():
                 owner, _, path = line.partition(sep)
                 if path in files and owner in by_na:
@@ -179,7 +200,8 @@ class Rpm(Manager):
         res = {}
         for line in split_lines(out):
             na, _, repo = line.partition("|")
-            if repo and repo not in ("@System", "<unknown>", "(none)"):
+            # dnf5 reports an opaque hash for packages that came with the image.
+            if repo and repo not in ("@System", "<unknown>", "(none)") and not re.fullmatch(r"[0-9a-f]{32}", repo):
                 res[na] = repo.lstrip("@")
         return res
 
@@ -276,7 +298,8 @@ class Rpm(Manager):
                     dest = os.path.join(opts.cache_dir, "rpm", f"{p['name']}-{p['version']}.{p['arch']}.rpm")
                     plan.add(Step(comment=f"{spec} is gone from the mirrors; fetching from Koji",
                                   fetch={"url": KOJI.format(src=src, version=ver, release=rel, arch=p["arch"], name=p["name"]),
-                                         "dest": dest, "check": "rpm-payload", "digest": str(p["payloadDigest"])}))
+                                         "dest": dest, "check": "rpm-payload", "digest": str(p["payloadDigest"]),
+                                         "tag": "PAYLOADSHA256" if "PAYLOADSHA256" in self._tags() else "PAYLOADDIGEST"}))
                     local.append(dest)
                     continue
                 if opts.best_effort:

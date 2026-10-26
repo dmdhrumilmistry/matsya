@@ -54,6 +54,9 @@ class Step:
             lines.append(" || ".join(f"curl -fsSL --retry 3 -o {dest} {shlex.quote(u)}" for u in urls))
             if f.get("sha256"):
                 lines.append(f"echo {shlex.quote(f['sha256'] + '  ' + f['dest'])} | sha256sum -c -")
+            if f.get("check") == "rpm-payload":
+                qf = shlex.quote("%{" + f.get("tag", "PAYLOADDIGEST") + "}")
+                lines.append(f"test \"$(rpm -qp --nosignature --qf {qf} {dest})\" = {shlex.quote(f['digest'])}")
         if self.write:
             w = self.write
             lines.append(f"mkdir -p {shlex.quote(os.path.dirname(w['path']))}")
@@ -148,7 +151,8 @@ def fetch_verified(f: Dict[str, str]) -> None:
             os.unlink(tmp)
             raise SyslockError(f"sha256 mismatch for {f['url']}: expected {f['sha256']}, got {got}")
     if f.get("check") == "rpm-payload":
-        got = run(["rpm", "-qp", "--nosignature", "--qf", "%{PAYLOADDIGEST}", tmp], check=False).strip()
+        tag = f.get("tag", "PAYLOADDIGEST")
+        got = run(["rpm", "-qp", "--nosignature", "--qf", "%{" + tag + "}", tmp], check=False).strip()
         if got != f["digest"]:
             os.unlink(tmp)
             raise SyslockError(f"rpm payload digest mismatch for {f['url']}")
