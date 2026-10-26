@@ -16,7 +16,7 @@ base64 = "0.22"
 clap = { version = "4", features = ["derive", "env"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 libc = "0.2.191"
-lz4_flex = "0.10.0"
+lz4_flex = "0.11.6"
 lzma-rs = "0.3.0"
 ruzstd = "0.8"
 serde = { version = "1", features = ["derive"] }
