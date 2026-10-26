@@ -361,13 +361,16 @@ fn cmd_sbom(f: &FileArg, e: &EnvArg, format: SbomFormat, output: &Option<String>
         SbomFormat::Cyclonedx => "cdx.json",
         SbomFormat::Spdx => "spdx.json",
     };
+    // `--env all` and an existing directory both mean "one file per
+    // environment in this directory", even if the lock has only one.
+    let to_dir = e.env.as_deref() == Some("all") || output.as_deref().is_some_and(|o| Path::new(o).is_dir());
     for eid in &targets {
         let doc = match format {
             SbomFormat::Cyclonedx => sbom::cyclonedx(eid, &envs[eid]),
             SbomFormat::Spdx => sbom::spdx(eid, &envs[eid]),
         };
         let text = serde_json::to_string_pretty(&doc)? + "\n";
-        let out = if targets.len() > 1 {
+        let out = if to_dir || targets.len() > 1 {
             Some(format!("{}/{eid}.{ext}", output.as_deref().unwrap_or(".")))
         } else {
             output.clone()
