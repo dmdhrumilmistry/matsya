@@ -72,17 +72,9 @@ pub struct SyncEntry {
     pub repository: String,
 }
 
-/// Decompress a sync database (gzip, zstd or plain tar).
+/// Decompress a sync database (gzip, zstd or plain tar), size-capped.
 fn db_reader(path: &str) -> Option<Box<dyn Read>> {
-    let data = std::fs::read(path).ok()?;
-    if data.starts_with(&[0x1f, 0x8b]) {
-        Some(Box::new(flate2::read::MultiGzDecoder::new(std::io::Cursor::new(data))))
-    } else if data.starts_with(&[0x28, 0xb5, 0x2f, 0xfd]) {
-        let dec = ruzstd::decoding::StreamingDecoder::new(std::io::Cursor::new(data)).ok()?;
-        Some(Box::new(dec))
-    } else {
-        Some(Box::new(std::io::Cursor::new(data)))
-    }
+    crate::formats::capped_reader(std::fs::read(path).ok()?).ok()
 }
 
 /// (name, version) -> entry, from a sync .db file.

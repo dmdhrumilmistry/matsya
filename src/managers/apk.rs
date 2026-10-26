@@ -158,10 +158,11 @@ impl Apk {
         }
         let mut res = HashMap::new();
         for f in files {
-            let Ok(file) = std::fs::File::open(&f) else { continue };
+            let Ok(data) = std::fs::read(&f) else { continue };
             // APKINDEX.tar.gz is a concatenation of gzip streams (signature +
-            // index); MultiGzDecoder reads them as one tar stream.
-            let mut ar = tar::Archive::new(flate2::read::MultiGzDecoder::new(file));
+            // index); the capped reader decodes them as one tar stream.
+            let Ok(reader) = crate::formats::capped_reader(data) else { continue };
+            let mut ar = tar::Archive::new(reader);
             let Ok(entries) = ar.entries() else { continue };
             for mut e in entries.flatten() {
                 if e.path().map(|p| p.to_string_lossy() == "APKINDEX").unwrap_or(false) {

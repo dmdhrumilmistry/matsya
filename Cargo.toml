@@ -1,6 +1,6 @@
 [package]
 name = "matsya"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.75"
 description = "Lock files and SBOMs for OS package managers: apt, dnf/yum/zypper (rpm), apk, pacman and Homebrew"
@@ -27,9 +27,9 @@ base64 = "0.22"
 clap = { version = "4", features = ["derive", "env"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 libc = "0.2.191"
-lz4_flex = "0.10.0"
+lz4_flex = "0.11.6"
 lzma-rs = "0.3.0"
-ruzstd = "0.8"
+ruzstd = "0.9.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"

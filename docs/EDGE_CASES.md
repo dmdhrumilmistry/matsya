@@ -50,6 +50,7 @@ containers in `.github/workflows/ci.yml`.
 | Locally installed `.deb`/`.rpm` (not from any repo) | `repositories: []` plus a warning at lock time. `apply` reports them as unresolved instead of guessing. |
 | Stale or missing apt indexes (`rm -rf /var/lib/apt/lists` in Docker) | Warns that hashes can't be recorded. `apply` refreshes indexes by default. |
 | Compressed apt indexes (`.lz4`, `.gz`, `.xz`, `.zst`) | Detected by magic number and decompressed natively. |
+| Corrupt or hostile compressed indexes (decompression bombs) | Every decompressor is capped at 1 GiB of output and fails cleanly instead of exhausting memory. |
 | zstd-compressed pacman sync dbs | gzip, zstd and plain tar databases are read natively. |
 | Custom pacman `DBPath` | Read from `pacman-conf`. |
 | Non-UTF-8 package metadata | Decoded with replacement; never crashes. |
