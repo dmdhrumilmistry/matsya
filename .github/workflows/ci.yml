@@ -61,7 +61,7 @@ jobs:
       - run: sudo apt-get install -y -q musl-tools
       - run: cargo build --release --locked --target ${{ matrix.target }}
       - run: file target/${{ matrix.target }}/release/matsya && ls -la target/${{ matrix.target }}/release/matsya
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: matsya-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/matsya
@@ -134,7 +134,7 @@ jobs:
         run: docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh capture /src/out/env.lock.json
       - name: Restore on a fresh container
         run: docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh restore /src/out/env.lock.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lock-${{ steps.name.outputs.name }}
@@ -183,7 +183,7 @@ jobs:
           $M apply -m brew -f brew.lock.json --dry-run --no-refresh
           $M apply -m brew -f brew.lock.json --yes --no-refresh
           $M check -m brew -f brew.lock.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: brew-${{ matrix.os }}
