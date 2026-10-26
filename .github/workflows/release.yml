@@ -34,7 +34,7 @@ jobs:
           mkdir -p dist
           cp target/${{ matrix.target }}/release/matsya dist/${{ matrix.asset }}
           cd dist && shasum -a 256 ${{ matrix.asset }} > ${{ matrix.asset }}.sha256
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/${{ matrix.asset }}
       - uses: actions/upload-artifact@v7
