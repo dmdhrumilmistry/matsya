@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>matsya: lock files &amp; SBOMs for OS package managers</title>
+  <meta name="description" content="Record a machine. Rebuild it anywhere. Know exactly what is in it. Lock files and CycloneDX/SPDX SBOMs for apt, dnf, yum, zypper, apk, pacman, Homebrew and Termux, in one static binary.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <meta property="og:title" content="matsya: lock files & SBOMs for OS package managers">
+  <meta property="og:description" content="Record a machine. Rebuild it anywhere. Know exactly what is in it.">
+  <meta property="og:image" content="https://dmdhrumilmistry.github.io/matsya/assets/social-preview.png">
+  <meta property="og:url" content="https://dmdhrumilmistry.github.io/matsya/">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --ink: #06142a; --deep: #0b2545; --sea: #0e3a64; --teal: #0c6f80; --foam: #c5f6ef;
+      --gold: #f7c044; --gold-2: #fff1bf; --orange: #e2761c; --mint: #7be0b5;
+      --text: #e8f1ff; --muted: #9fb6d6; --card: rgba(255,255,255,.04); --line: rgba(255,255,255,.09);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; color: var(--text); background: var(--ink);
+      font: 16px/1.6 Inter, "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: var(--mono); }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+    /* nav */
+    nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px);
+          background: rgba(6,20,42,.72); border-bottom: 1px solid var(--line); }
+    nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+    nav .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 800; font-size: 20px; }
+    nav .brand img { width: 32px; height: 32px; }
+    nav .links { margin-left: auto; display: flex; gap: 20px; font-size: 15px; }
+    nav .links a { color: var(--muted); }
+    nav .links a:hover { color: var(--text); text-decoration: none; }
+    @media (max-width: 760px) { nav .links a:not(.gh) { display: none; } }
+
+    /* hero */
+    header.hero {
+      position: relative; overflow: hidden;
+      background: radial-gradient(1200px 500px at 70% -10%, rgba(255,255,255,.08), transparent 60%),
+                  linear-gradient(180deg, var(--ink) 0%, var(--sea) 70%, var(--teal) 100%);
+      padding: 72px 0 140px;
+    }
+    .hero .wrap { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+    @media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; } .hero .art { order: -1; max-width: 280px; margin: 0 auto; } }
+    .eyebrow { display: inline-block; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+               color: var(--mint); border: 1px solid rgba(123,224,181,.35); padding: 4px 12px; border-radius: 999px; }
+    h1 { font-size: clamp(44px, 7vw, 84px); line-height: 1; margin: 18px 0 12px; font-weight: 800; letter-spacing: -.02em;
+         background: linear-gradient(90deg, var(--gold-2), var(--gold) 45%, var(--orange)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .tagline { font-size: clamp(20px, 2.4vw, 26px); color: var(--text); margin: 0 0 8px; font-weight: 600; }
+    .sub { color: var(--muted); font-size: 18px; max-width: 560px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 28px; }
+    .chip { font-size: 14px; font-weight: 600; padding: 4px 12px; border-radius: 999px; background: var(--mint); color: var(--ink); }
+    .chip.gold { background: var(--gold); }
+    .chip.outline { background: transparent; color: var(--gold); border: 1.5px solid var(--gold); }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; font-weight: 700; }
+    .btn.primary { background: linear-gradient(90deg, var(--gold), var(--orange)); color: var(--ink); }
+    .btn.ghost { border: 1px solid var(--line); color: var(--text); background: var(--card); }
+    .btn:hover { text-decoration: none; filter: brightness(1.08); }
+    .art img { width: 100%; height: auto; filter: drop-shadow(0 30px 60px rgba(0,0,0,.45)); animation: bob 6s ease-in-out infinite; }
+    @keyframes bob { 50% { transform: translateY(-10px) rotate(-1deg); } }
+    @media (prefers-reduced-motion: reduce) { .art img { animation: none; } }
+    .waves { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: 120px; }
+
+    /* install */
+    .install { margin-top: -70px; position: relative; z-index: 2; }
+    .term { background: #0b1220; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.45); overflow: hidden; }
+    .term .bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #151d2e; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .tabs { margin-left: 12px; display: flex; gap: 4px; flex-wrap: wrap; }
+    .tab { font: 600 13px/1 var(--mono); color: var(--muted); background: transparent; border: 0; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+    .tab[aria-selected="true"] { color: var(--ink); background: var(--gold); }
+    .term pre { margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 15px; color: var(--text); }
+    .term .panel { position: relative; }
+    .term .panel[hidden] { display: none; }
+    .copy { position: absolute; top: 12px; right: 12px; font: 600 12px var(--mono); color: var(--muted); background: var(--card);
+            border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    .copy:hover { color: var(--text); }
+    .prompt { color: var(--mint); user-select: none; }
+    .note { color: var(--muted); font-size: 14px; margin: 12px 4px 0; }
+
+    /* sections */
+    section { padding: 88px 0 0; }
+    h2 { font-size: clamp(28px, 3.6vw, 40px); margin: 0 0 10px; letter-spacing: -.01em; }
+    .lead { color: var(--muted); font-size: 18px; max-width: 760px; margin: 0 0 36px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+    .card .ico { font-size: 26px; }
+    .card h3 { margin: 8px 0 6px; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; counter-reset: step; }
+    @media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .flow { grid-template-columns: 1fr; } }
+    .step { position: relative; background: linear-gradient(180deg, rgba(247,192,68,.08), transparent); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+    .step::before { counter-increment: step; content: counter(step); position: absolute; top: -14px; left: 18px; width: 28px; height: 28px;
+                    border-radius: 50%; background: var(--gold); color: var(--ink); font-weight: 800; display: grid; place-items: center; font-size: 14px; }
+    .step code { display: inline-block; margin: 6px 0; color: var(--gold); font-size: 15px; }
+    .step p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    .shot { display: block; width: 100%; max-width: 860px; margin: 0 auto; border-radius: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
+    tr:last-child td { border-bottom: 0; }
+    td.y { color: var(--mint); font-weight: 700; }
+    td.n { color: #ff8f8f; }
+    td.p { color: var(--gold); }
+    .hl { background: rgba(247,192,68,.07); }
+
+    .story { display: grid; grid-template-columns: 220px 1fr; gap: 36px; align-items: center; }
+    @media (max-width: 760px) { .story { grid-template-columns: 1fr; } .story img { max-width: 200px; margin: 0 auto; } }
+    .story img { width: 100%; }
+    .story blockquote { margin: 0; font-size: 18px; color: var(--text); border-left: 3px solid var(--gold); padding-left: 20px; }
+    .story p { color: var(--muted); }
+
+    .docs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 900px) { .docs { grid-template-columns: 1fr 1fr; } }
+    .docs a.card { color: var(--text); }
+    .docs a.card:hover { text-decoration: none; border-color: rgba(247,192,68,.5); }
+    .docs a.card span { color: var(--muted); font-size: 14px; display: block; margin-top: 4px; }
+
+    footer { margin-top: 96px; padding: 36px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="wrap">
+      <a class="brand" href="#"><img src="assets/logo.svg" alt="">matsya</a>
+      <div class="links">
+        <a href="#why">Why</a>
+        <a href="#how">How it works</a>
+        <a href="#platforms">Platforms</a>
+        <a href="#compare">Compare</a>
+        <a href="https://github.com/dmdhrumilmistry/matsya/tree/main/docs">Docs</a>
+        <a class="gh" href="https://github.com/dmdhrumilmistry/matsya">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Open source · Apache-2.0 · one static binary</span>
+        <h1>matsya</h1>
+        <p class="tagline">Lock files &amp; SBOMs for OS package managers.</p>
+        <p class="sub">Record a machine. Rebuild it anywhere. Know exactly what is in it.
+          matsya snapshots every installed package, with exact versions, hashes and repositories,
+          into a reviewable lock file, replays it on other machines, catches drift, and
+          produces CycloneDX and SPDX SBOMs.</p>
+        <div class="chips">
+          <span class="chip">apt</span><span class="chip">dnf</span><span class="chip">yum</span><span class="chip">zypper</span>
+          <span class="chip">apk</span><span class="chip">pacman</span><span class="chip gold">Homebrew</span><span class="chip gold">Termux</span>
+          <span class="chip outline">CycloneDX · SPDX</span>
+        </div>
+        <div class="cta">
+          <a class="btn primary" href="#install">Install</a>
+          <a class="btn ghost" href="https://github.com/dmdhrumilmistry/matsya">★ Star on GitHub</a>
+          <a class="btn ghost" href="https://github.com/dmdhrumilmistry/matsya/releases/latest">Releases</a>
+        </div>
+      </div>
+      <div class="art"><img src="assets/logo.svg" alt="Matsya, the horned golden fish, towing a boat of packages"></div>
+    </div>
+    <svg class="waves" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 60 C 240 20, 480 100, 720 60 S 1200 20, 1440 60 V120 H0Z" fill="#0f8c95" opacity=".55"/>
+      <path d="M0 84 C 260 54, 520 118, 780 84 S 1240 54, 1440 84 V120 H0Z" fill="#06142a"/>
+    </svg>
+  </header>
+
+  <div class="wrap install" id="install">
+    <div class="term">
+      <div class="bar">
+        <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="sh">Linux · macOS · Termux</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="cargo">cargo</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="use">first steps</button>
+        </div>
+      </div>
+      <div class="panel" data-panel="sh"><button class="copy">copy</button><pre><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/dmdhrumilmistry/matsya/main/install.sh | sh</pre></div>
+      <div class="panel" data-panel="cargo" hidden><button class="copy">copy</button><pre><span class="prompt">$ </span>cargo install matsya</pre></div>
+      <div class="panel" data-panel="use" hidden><button class="copy">copy</button><pre><span class="prompt">$ </span>matsya lock                 # snapshot this machine into matsya.lock.json
+<span class="prompt">$ </span>matsya sbom -o sbom.cdx.json  # CycloneDX (or --format spdx)
+<span class="prompt">$ </span>matsya check                # exit 1 if anything drifted
+<span class="prompt">$ </span>sudo matsya apply           # rebuild the locked state on another machine</pre></div>
+    </div>
+    <p class="note">No root needed to install: it uses sudo/doas only when required, otherwise <code>~/.local/bin</code>; in Termux it installs the native Android build. Every binary ships with a SHA-256 and a GitHub build attestation.</p>
+  </div>
+
+  <section id="why">
+    <div class="wrap">
+      <h2>Why matsya</h2>
+      <p class="lead">Language ecosystems have had lock files for years. The operating system underneath usually has a hand-written <code>apt-get install</code> line and hope.</p>
+      <div class="grid">
+        <div class="card"><div class="ico">🔒</div><h3>Real lock files</h3><p>Exact version, architecture, install reason, holds, dependency graph, repository and signing key for every package, plus the SHA-256 from signed repo metadata.</p></div>
+        <div class="card"><div class="ico">🌍</div><h3>One file, many machines</h3><p>Your Mac, the CI runner, the Raspberry Pi and your phone in Termux live side by side as environments in a single lock.</p></div>
+        <div class="card"><div class="ico">🕰️</div><h3>Vanished versions still install</h3><p>Falls back to snapshot.debian.org, snapshot.ubuntu.com, Fedora Koji, the Arch Linux Archive or <code>brew extract</code>, and verifies the hash first.</p></div>
+        <div class="card"><div class="ico">🧾</div><h3>Reproducible SBOMs</h3><p>CycloneDX 1.6 and SPDX 2.3 straight from the lock: purls with distro qualifiers, license expressions, hashes and the dependency graph.</p></div>
+        <div class="card"><div class="ico">🚨</div><h3>Drift detection</h3><p><code>matsya check</code> exits 1 when a machine no longer matches, including rebuilt packages with the same version but a different hash.</p></div>
+        <div class="card"><div class="ico">🪶</div><h3>Depends on nothing</h3><p>A ~3 MB static binary that reads dpkg, rpm (SQLite, NDB, BerkeleyDB), apk, pacman and Homebrew databases itself. Lock, check and SBOM work with an empty <code>PATH</code>.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="lead">Four commands cover the whole life of a machine.</p>
+      <div class="flow">
+        <div class="step"><code>matsya lock</code><p>Reads the package databases directly and writes a deterministic, sorted <code>matsya.lock.json</code>. Re-locking an unchanged machine changes nothing.</p></div>
+        <div class="step"><code>matsya sbom</code><p>Turns the lock into CycloneDX or SPDX without touching the machine, ready for Grype, Trivy or OSV.</p></div>
+        <div class="step"><code>matsya check</code><p>Compares the live system with the lock and fails on missing, extra, changed or tampered packages.</p></div>
+        <div class="step"><code>matsya apply</code><p>Installs the exact locked versions in one transaction with the native package manager, restores install reasons and holds, and verifies archived downloads.</p></div>
+      </div>
+      <p style="margin-top:40px"><img class="shot" src="assets/cli.svg" alt="matsya welcome screen in a terminal"></p>
+    </div>
+  </section>
+
+  <section id="platforms">
+    <div class="wrap">
+      <h2>Supported platforms</h2>
+      <p class="lead">Every CI run copies the static binary into each distro container and goes through the full cycle: lock, introduce drift, check fails, apply repairs, then rebuild a fresh container from the lock.</p>
+      <div class="tablewrap">
+        <table>
+          <tr><th>Package manager</th><th>Systems</th><th>Old versions come from</th><th>Tested in CI</th></tr>
+          <tr><td><b>apt</b> / dpkg</td><td>Debian, Ubuntu and derivatives</td><td>snapshot.debian.org, snapshot.ubuntu.com</td><td>Debian 12, 13 · Ubuntu 22.04, 24.04 · arm64</td></tr>
+          <tr><td><b>dnf5 / dnf / yum</b></td><td>Fedora, RHEL, Rocky, Alma, Amazon Linux</td><td>Fedora Koji</td><td>Fedora · Rocky 8, 9 · Amazon Linux 2 · arm64</td></tr>
+          <tr><td><b>zypper</b></td><td>openSUSE, SLES</td><td>no public archive</td><td>Tumbleweed</td></tr>
+          <tr><td><b>apk</b></td><td>Alpine, Wolfi</td><td>no public archive</td><td>Alpine · arm64</td></tr>
+          <tr><td><b>pacman</b></td><td>Arch, Manjaro, EndeavourOS</td><td>Arch Linux Archive</td><td>Arch</td></tr>
+          <tr><td><b>Homebrew</b></td><td>macOS, Linux</td><td><code>brew extract</code></td><td>macOS · Linux</td></tr>
+          <tr><td><b>Termux</b> (apt)</td><td>Android</td><td>no public archive</td><td>termux-docker x86_64 · aarch64</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <div class="wrap">
+      <h2>How it compares</h2>
+      <p class="lead">Different tools solve different parts of the problem. The <a href="https://github.com/dmdhrumilmistry/matsya/blob/main/docs/DEEP_DIVE.md">deep dive</a> covers the trade-offs honestly, including when Nix, snapshot mirrors or image digests are the better choice.</p>
+      <div class="tablewrap">
+        <table>
+          <tr><th></th><th>Package list / Brewfile</th><th>Pinning</th><th>Syft / Trivy scan</th><th>Nix / Guix</th><th class="hl">matsya</th></tr>
+          <tr><td>Exact versions + hashes</td><td class="n">✗</td><td class="p">partial</td><td class="y">✓</td><td class="y">✓</td><td class="y hl">✓</td></tr>
+          <tr><td>Rebuild on another machine</td><td class="p">names only</td><td class="n">✗</td><td class="n">✗</td><td class="y">✓</td><td class="y hl">✓</td></tr>
+          <tr><td>Locks the distro packages you already use</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">✗ own package set</td><td class="y hl">✓</td></tr>
+          <tr><td>Drift detection</td><td class="n">✗</td><td class="n">✗</td><td class="p">diff by hand</td><td class="y">✓</td><td class="y hl">✓</td></tr>
+          <tr><td>SBOM</td><td class="n">✗</td><td class="n">✗</td><td class="y">✓</td><td class="p">via tools</td><td class="y hl">✓ from the lock</td></tr>
+          <tr><td>macOS + Linux + Android in one file</td><td class="n">✗</td><td class="n">✗</td><td class="n">✗</td><td class="p">macOS + Linux</td><td class="y hl">✓</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="story">
+    <div class="wrap story">
+      <img src="assets/logo.svg" alt="">
+      <div>
+        <h2>Why "matsya"?</h2>
+        <blockquote>In the Matsya Purana, Vishnu takes the form of Matsya, a horned golden fish, and warns the sage Manu of a great flood. Manu fills a boat with the seeds of every plant, every kind of creature and the Vedas, ties it to Matsya's horn, and the fish tows it safely through the deluge. Afterwards, the world is rebuilt from exactly what was saved.</blockquote>
+        <p>That is the job: record everything a machine is made of, carry it safely, and rebuild the same world somewhere else. In the logo, the cargo is packages.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="docs">
+    <div class="wrap">
+      <h2>Documentation</h2>
+      <p class="lead">Honest about the limits: Alpine, RHEL clones, openSUSE and Homebrew casks keep no public archive of old versions, and install scripts still run.</p>
+      <div class="docs">
+        <a class="card" href="https://github.com/dmdhrumilmistry/matsya#readme"><b>README</b><span>Commands, CI and Dockerfile recipes</span></a>
+        <a class="card" href="https://github.com/dmdhrumilmistry/matsya/blob/main/docs/DEEP_DIVE.md"><b>Deep dive</b><span>Why OS lock files are hard; every alternative compared</span></a>
+        <a class="card" href="https://github.com/dmdhrumilmistry/matsya/blob/main/docs/EDGE_CASES.md"><b>Edge cases</b><span>Epochs, multiarch, cross-release, vanished versions, Termux</span></a>
+        <a class="card" href="https://github.com/dmdhrumilmistry/matsya/blob/main/docs/LOCKFILE.md"><b>Lock format</b><span>The matsya.lock.json specification</span></a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>matsya · Apache-2.0 · made by <a href="https://github.com/dmdhrumilmistry">@dmdhrumilmistry</a></span>
+      <span><a href="https://crates.io/crates/matsya">crates.io</a> · <a href="https://github.com/dmdhrumilmistry/matsya/releases">releases</a> · <a href="https://github.com/dmdhrumilmistry/matsya/blob/main/SECURITY.md">security</a></span>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', t === tab); });
+        document.querySelectorAll('.panel').forEach(function (p) { p.hidden = p.dataset.panel !== tab.dataset.tab; });
+      });
+    });
+    document.querySelectorAll('.copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.parentElement.querySelector('pre').innerText
+          .split('\n').map(function (l) { return l.replace(/^\$ /, '').replace(/\s+#.*$/, ''); }).join('\n');
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'copied ✓';
+          setTimeout(function () { btn.textContent = 'copy'; }, 1500);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

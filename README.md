@@ -13,6 +13,7 @@
 
 <p align="center">
   <b>Record a machine. Rebuild it anywhere. Know exactly what is in it.</b><br>
+  <a href="https://dmdhrumilmistry.github.io/matsya/">🌐 Website</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-why-matsya">Why</a> ·
   <a href="#-supported-platforms">Platforms</a> ·
