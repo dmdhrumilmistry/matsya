@@ -5,6 +5,7 @@
 //! exactly as it was. matsya records what a machine is made of and rebuilds
 //! it, unchanged, somewhere else.
 
+mod banner;
 mod diff;
 mod formats;
 mod lockfile;
@@ -20,7 +21,7 @@ use std::io::{IsTerminal, Write as _};
 use std::path::Path;
 use std::sync::atomic::Ordering;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum};
 
 use crate::managers::{Manager, Options};
 use crate::model::{Environment, Lockfile, Package};
@@ -37,7 +38,7 @@ struct Cli {
     #[arg(short, long, global = true)]
     verbose: bool,
     #[command(subcommand)]
-    cmd: Cmd,
+    cmd: Option<Cmd>,
 }
 
 #[derive(Args, Clone)]
@@ -641,7 +642,11 @@ fn cmd_export(f: &FileArg, e: &EnvArg, format: ExportFormat, roots_only: bool, o
 }
 
 fn run(cli: Cli) -> Result<i32> {
-    match &cli.cmd {
+    let Some(cmd) = &cli.cmd else {
+        print!("{}", banner::welcome(banner::color_stdout()));
+        return Ok(0);
+    };
+    match cmd {
         Cmd::Platform => cmd_platform(),
         Cmd::Lock { f, env_id, replace, no_licenses, no_embed_keys, stdout } => {
             cmd_lock(f, env_id, *replace, *no_licenses, *no_embed_keys, *stdout)
@@ -685,7 +690,10 @@ fn run(cli: Cli) -> Result<i32> {
 }
 
 fn main() {
-    let cli = Cli::parse();
+    // The banner tops `--help`; clap strips its colors when stdout is not a
+    // terminal or NO_COLOR is set.
+    let matches = Cli::command().before_help(banner::render(true)).get_matches();
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     util::VERBOSE.store(cli.verbose, Ordering::Relaxed);
     let code = match run(cli) {
         Ok(c) => c,

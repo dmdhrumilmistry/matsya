@@ -674,7 +674,11 @@ impl Manager for Rpm {
             }
         } else {
             if !installs.is_empty() || !local.is_empty() {
-                let mut argv: Vec<String> = [fe, "-y", "install", "--allowerasing"].map(String::from).to_vec();
+                let mut argv: Vec<String> = [fe, "-y", "install"].map(String::from).to_vec();
+                // dnf can replace conflicting packages; legacy yum has no such option.
+                if fe != "yum" {
+                    argv.push("--allowerasing".into());
+                }
                 argv.extend(installs.iter().cloned());
                 argv.extend(local.iter().cloned());
                 plan.add(Step::cmd(

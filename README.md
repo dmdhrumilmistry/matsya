@@ -38,6 +38,10 @@ dpkg, rpm, apk, pacman and Homebrew databases itself and has its own HTTPS
 client. `lock`, `check`, `diff` and `sbom` work with an *empty* `PATH`. Only
 `apply` calls the system package manager, because installing is its job.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dmdhrumilmistry/matsya/main/assets/cli.svg" alt="matsya welcome screen in a terminal" width="760">
+</p>
+
 ## 🚀 Quick start
 
 ```sh
@@ -145,6 +149,8 @@ sudo matsya apply --best-effort     # newest version where the locked one is gon
 matsya sbom [--format cyclonedx|spdx] [--env ID|all] [-o FILE|DIR]
 matsya export --format brewfile     # Homebrew Bundle interop
 ```
+
+Colors appear only in a terminal. Pipes, CI logs and `NO_COLOR=1` get plain text.
 
 ### 🌍 One lock, many machines
 
