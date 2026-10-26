@@ -1,10 +1,6 @@
-__pycache__/
-*.pyc
-*.egg-info/
-build/
-dist/
+/target
+/bin
 out/
-.venv/
 /*.cdx.json
 /*.spdx.json
-/syslock.lock.json
+/matsya.lock.json

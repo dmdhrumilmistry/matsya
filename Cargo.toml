@@ -1,0 +1,30 @@
+[package]
+name = "matsya"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Lock files and SBOMs for OS package managers: apt, dnf/yum/zypper (rpm), apk, pacman and Homebrew"
+license = "Apache-2.0"
+repository = "https://github.com/dmdhrumilmistry/matsya"
+readme = "README.md"
+keywords = ["lockfile", "sbom", "cyclonedx", "spdx", "reproducibility"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = ["examples/*", "tests/fixtures/*", ".github/*"]
+
+[dependencies]
+base64 = "0.22"
+clap = { version = "4", features = ["derive", "env"] }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+ruzstd = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tar = { version = "0.4", default-features = false }
+uuid = { version = "1", features = ["v5"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

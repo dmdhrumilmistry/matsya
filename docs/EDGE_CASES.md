@@ -1,6 +1,6 @@
-# Edge cases and how syslock handles them
+# Edge cases and how matsya handles them
 
-Each entry says what can go wrong and what syslock does about it. Covered
+Each entry says what can go wrong and what matsya does about it. Covered
 by tests = unit tests with fixtures in `tests/`. Covered by CI = real
 containers in `.github/workflows/ci.yml`.
 
@@ -12,7 +12,7 @@ containers in `.github/workflows/ci.yml`.
 | Same release, different arch (amd64 lock on an arm64 box) | The environment is still chosen. Arch-specific packages are re-targeted to the native arch at the same version, and `all`/`noarch` stay as they are. The archive fallback is skipped for re-targeted packages because their hash can't be known. A warning is printed. |
 | Different release of the same distro (22.04 lock on 24.04) | Refused by default. `--allow-cross-release` picks the closest environment from the same `ID`/`ID_LIKE` family. Add `--best-effort` to install the newest version where the exact one doesn't exist. |
 | Derivative distros (Pop!_OS, Mint, Rocky vs Alma) | Matched through `ID_LIKE` only with `--allow-cross-release`. Versions usually differ, so expect `--best-effort`. |
-| Several machines, one file | `environments` is a map. `syslock lock` only updates the current machine's entry. Use `syslock envs` to list them and `--env` to choose one. |
+| Several machines, one file | `environments` is a map. `matsya lock` only updates the current machine's entry. Use `matsya envs` to list them and `--env` to choose one. |
 | macOS 14 lock on macOS 15 | Brew-only environments match on distro and arch and ignore the macOS release, because Homebrew versions don't depend on it. |
 | macOS lock on Linux (or the reverse) for Homebrew | Choose it with `--env macos-15-aarch64`. Formula versions carry over. Bottle hashes are per platform (Homebrew reports the one it runs on), so on another platform Homebrew's own checksum verification applies instead of the lock's. Casks are skipped on Linux. |
 | Rosetta shell on Apple Silicon | `sysctl.proc_translated` is checked so the platform reports `aarch64`, not `x86_64`. |
@@ -35,9 +35,9 @@ containers in `.github/workflows/ci.yml`.
 | Formula from a third-party tap (`user/tap/foo`) | Full name kept, tap recorded with remote and commit. `apply` taps it first. |
 | Binary NMU (Debian `+b1`, source version differs) | Source name and version recorded separately and exposed as `upstream=` in the purl. |
 | `gpg-pubkey` pseudo-packages in rpm | Excluded. |
-| Alpine virtual packages (`.build-deps`) | Marked `virtual` and recreated with `apk add --virtual` from their members. syslock's own pin group is ignored. |
+| Alpine virtual packages (`.build-deps`) | Marked `virtual` and recreated with `apk add --virtual` from their members. matsya's own pin group is ignored. |
 | Alpine world entries with tags/constraints (`jq@edge`, `curl=8.9`) | The original entry is kept in `worldEntry`. Repository tags are re-applied on install using apk's `name@tag=version` syntax. |
-| Older Homebrew version rebuilt with `brew extract` | Installed as `syslock/pins/foo@1.2`. `check`, re-applies and `--prune` treat it as `foo`, so it is not reinstalled or removed. Pins go on the formula that was actually installed. |
+| Older Homebrew version rebuilt with `brew extract` | Installed as `matsya/pins/foo@1.2`. `check`, re-applies and `--prune` treat it as `foo`, so it is not reinstalled or removed. Pins go on the formula that was actually installed. |
 
 ## System state
 
@@ -50,12 +50,13 @@ containers in `.github/workflows/ci.yml`.
 | Locally installed `.deb`/`.rpm` (not from any repo) | `repositories: []` plus a warning at lock time. `apply` reports them as unresolved instead of guessing. |
 | Stale or missing apt indexes (`rm -rf /var/lib/apt/lists` in Docker) | Warns that hashes can't be recorded. `apply` refreshes indexes by default. |
 | Compressed apt indexes (`.lz4`, `.gz`) | Read through `apt-helper cat-file`, so any compression apt supports works. |
-| zstd-compressed pacman sync dbs | Uses `tarfile`, then falls back to the `zstd` binary. |
+| zstd-compressed pacman sync dbs | gzip, zstd and plain tar databases are read natively. |
 | Custom pacman `DBPath` | Read from `pacman-conf`. |
 | Non-UTF-8 package metadata | Decoded with replacement; never crashes. |
+| Minimal / distroless images without Python, curl or a shell toolchain | matsya is one static binary; archive downloads use curl, wget or apt's own `apt-helper`, whichever exists. |
 | Localised tool output | Every command runs with `LC_ALL=C`. |
 | Thousands of packages | Commands are batched to stay under `ARG_MAX`. Apt indexes are streamed rather than fully parsed. |
-| Running as root with Homebrew present | Brew refuses root, so syslock skips brew under root and tells you to run `--managers brew` as your user. |
+| Running as root with Homebrew present | Brew refuses root, so matsya skips brew under root and tells you to run `--managers brew` as your user. |
 | Running `apply` without root | Refused for system managers. `--dry-run` works as any user. |
 | `apply --roots-only` | The final verification and `check --roots-only` compare only manually installed packages, because dependencies were left to the solver. |
 | zypper with an empty `AutoInstalled` file | Every package counts as user-installed (the file lists automatic ones). |
@@ -71,7 +72,7 @@ containers in `.github/workflows/ci.yml`.
 | Version gone (Fedora) | Download from Koji. Verified by the rpm payload digest because Koji doesn't publish file hashes in the lock's terms. |
 | Version gone (Arch) | Download from the Arch Linux Archive using the exact recorded filename and SHA-256. Warns about partial upgrades. |
 | Version gone (Alpine, RHEL clones, openSUSE) | No public archive exists. Reported as unresolved, or the newest version is installed with `--best-effort`. |
-| Version gone (Homebrew) | Recreated with `brew extract` into a local `syslock/pins` tap. Warns that this needs a homebrew-core clone and usually builds from source. |
+| Version gone (Homebrew) | Recreated with `brew extract` into a local `matsya/pins` tap. Warns that this needs a homebrew-core clone and usually builds from source. |
 | Old cask version | Can't be installed (Homebrew has no mechanism). Reported, or the newest is installed with `--best-effort`. |
 | Third-party repo keys | Hashed always. The key bytes are embedded only when the keyring isn't owned by a distro package (`dpkg -S`, apk db ownership). `--no-embed-keys` disables embedding. |
 | `trusted=yes` / unsigned repos | Flagged as `trusted: true` in the repository record so a reviewer sees it. |
@@ -86,8 +87,8 @@ containers in `.github/workflows/ci.yml`.
 | Re-locking an unchanged system | Byte-identical output; the file isn't rewritten (no git churn). |
 | Lock produced at a fixed time for reproducible builds | `SOURCE_DATE_EPOCH` sets `capturedAt`. |
 | Hand edits / corruption | Per-environment digest. `validate` fails and `apply` refuses without `--force`. |
-| Git merge conflict markers in the lock | Detected with a specific hint (re-run `syslock lock` on each machine). |
-| Lock from a newer syslock | `lockfileVersion` is checked and an upgrade is requested. |
+| Git merge conflict markers in the lock | Detected with a specific hint (re-run `matsya lock` on each machine). |
+| Lock from a newer matsya | `lockfileVersion` is checked and an upgrade is requested. |
 | Partial capture (brew not installed in this container) | Existing manager sections in that environment are kept. `--replace` drops them. |
 | Crash while writing | Writes go to a temp file followed by an atomic `rename`. |
 
@@ -103,5 +104,5 @@ containers in `.github/workflows/ci.yml`.
 * RHEL subscription repos, Ubuntu Pro/ESM and other authenticated repos
   need credentials on the target; they are not stored in the lock.
 * Gentoo, Void, NixOS, Solus and other package managers are not supported
-  yet. The `Manager` interface in `src/syslock/managers/base.py` is the
+  yet. The `Manager` interface in `src/managers/mod.rs` is the
   extension point.

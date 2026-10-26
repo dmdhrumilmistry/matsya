@@ -1,10 +1,10 @@
 # Security policy
 
 Please report vulnerabilities privately via
-[GitHub security advisories](https://github.com/dmdhrumilmistry/syslock/security/advisories/new)
+[GitHub security advisories](https://github.com/dmdhrumilmistry/matsya/security/advisories/new)
 rather than public issues.
 
-syslock runs package managers as root during `apply`. In scope:
+matsya runs package managers as root during `apply`. In scope:
 
 * a lock file that makes `apply` run unintended commands or write outside
   the paths described in the plan;
@@ -13,5 +13,5 @@ syslock runs package managers as root during `apply`. In scope:
 
 The lock digest detects accidental edits, not malicious ones. Treat lock
 files from untrusted sources like any other code you'd run as root:
-review `syslock apply --dry-run` output first, and sign lock files if you
+review `matsya apply --dry-run` output first, and sign lock files if you
 distribute them.

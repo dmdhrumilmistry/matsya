@@ -1,13 +1,13 @@
 # Lock file format (lockfileVersion 1)
 
-`syslock.lock.json` is UTF-8 JSON with sorted keys and two-space
+`matsya.lock.json` is UTF-8 JSON with sorted keys and two-space
 indentation, ending in a newline. Package lists are sorted, so the same
 system always produces the same bytes and `git diff` stays readable.
 
 ```jsonc
 {
   "lockfileVersion": 1,
-  "generator": { "name": "syslock", "version": "0.1.0" },
+  "generator": { "name": "matsya", "version": "0.1.0" },
   "environments": {
     "ubuntu-24.04-x86_64": {
       "platform": {

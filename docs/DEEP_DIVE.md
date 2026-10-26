@@ -2,7 +2,7 @@
 
 Language package managers (npm, Cargo, Poetry, Go modules) all have lock
 files. OS package managers mostly don't. This document covers why, what
-options exist, what each one costs, and where syslock fits.
+options exist, what each one costs, and where matsya fits.
 
 ## 1. Why OS packages are hard to lock
 
@@ -86,7 +86,7 @@ Freeze the bytes of the whole filesystem.
   run. They don't describe a Debian laptop or a Homebrew setup that already
   exists.
 
-### F. Capture + replay with archive fallback (syslock)
+### F. Capture + replay with archive fallback (matsya)
 
 Record the exact installed state of an existing machine, with hashes, repo
 origins and install reasons, in a text lock file. Replay it elsewhere by
@@ -100,14 +100,14 @@ and verify the recorded hash.
   * Hashes come from signed repo metadata, so a replay detects swapped or rebuilt artifacts.
   * One file holds several machines (laptop macOS arm64, CI Ubuntu x86_64, Pi Debian aarch64).
   * The SBOM is derived from the lock. It is deterministic, and you can produce it for a machine without logging into it.
-  * Drift detection (`syslock check`) is cheap enough to run in CI or a cron job.
+  * Drift detection (`matsya check`) is cheap enough to run in CI or a cron job.
 * **Cons and limits** (more in [EDGE_CASES.md](EDGE_CASES.md)):
   * Replay depends on archives. Debian/Ubuntu/Fedora/Arch are good. Alpine, RHEL clones and Homebrew casks have no archive, so old versions can fade away.
   * Install scripts still run, so file-level reproducibility isn't guaranteed (config files, generated caches, `postinst` side effects).
-  * Cross-release replay (lock from 22.04 on 24.04) is mostly impossible by nature. syslock refuses unless you pass `--allow-cross-release --best-effort`.
+  * Cross-release replay (lock from 22.04 on 24.04) is mostly impossible by nature. matsya refuses unless you pass `--allow-cross-release --best-effort`.
   * Cross-architecture replay installs the same versions, but their hashes can't be checked (the lock only knows the source arch's hash).
   * Homebrew only gives you the current formula. Older versions get rebuilt via `brew extract` and usually compile from source. Dependency versions follow the formula and can't be pinned.
-  * Mixing archived and current packages on Arch is a partial upgrade. syslock warns and points to date-based mirrors for a full time-travel.
+  * Mixing archived and current packages on Arch is a partial upgrade. matsya warns and points to date-based mirrors for a full time-travel.
 
 ## 3. Which approach when
 
@@ -120,14 +120,14 @@ and verify the recorded hash.
 | Hermetic builds from scratch | E (Nix/Guix/apko) |
 | Freeze a box and stop upgrades | B |
 
-They combine well. Run syslock inside a Dockerfile build to produce the
+They combine well. Run matsya inside a Dockerfile build to produce the
 lock and SBOM, then ship the image by digest. Or lock the base image's
-packages with syslock and pin the base image itself by digest.
+packages with matsya and pin the base image itself by digest.
 
 ## 4. SBOM considerations
 
 * **Format.** CycloneDX 1.6 and SPDX 2.3 are both generated from the same
-  data. CycloneDX carries the dependency graph and syslock properties
+  data. CycloneDX carries the dependency graph and matsya properties
   (manager, install reason, repo). SPDX carries `DEPENDS_ON` / `CONTAINS`
   relationships and license expressions.
 * **Identity.** Packages are identified by [purl](https://github.com/package-url/purl-spec):
@@ -140,18 +140,18 @@ packages with syslock and pin the base image itself by digest.
   lock and left out of the SBOM.
 * **Licenses.** Distro license metadata is messy. Debian only has
   machine-readable `copyright` files for some packages, and RPM/pacman use
-  a mix of SPDX and legacy names. syslock maps known identifiers and legacy
+  a mix of SPDX and legacy names. matsya maps known identifiers and legacy
   aliases to SPDX ids, keeps `OR` choices, and records everything else as
   `LicenseRef-*` instead of guessing.
 * **Lock vs live scan.** Scanners like Syft and Trivy read the filesystem.
-  syslock reads the lock. The lock-based SBOM is reproducible and
+  matsya reads the lock. The lock-based SBOM is reproducible and
   reviewable. A live scan also catches files the package manager doesn't
   know about (curl-pipe-bash installs, `/usr/local`, pip/npm globals).
   Use both if you need complete coverage.
 
 ## 5. Security model
 
-* syslock trusts the package manager's own signature checks (apt
+* matsya trusts the package manager's own signature checks (apt
   InRelease, rpm GPG, apk RSA, pacman PGP). On top of that, when it
   downloads from an archive it checks the SHA-256 recorded at lock time
   (Fedora: the rpm payload digest). A mismatch aborts.
@@ -159,7 +159,7 @@ packages with syslock and pin the base image itself by digest.
   only installed on another machine with `--add-repos`, because adding a
   repo grants that vendor root on install. Review those entries the same
   way you'd review a new dependency.
-* Each environment has a digest. `syslock validate` and `apply` refuse a
+* Each environment has a digest. `matsya validate` and `apply` refuse a
   hand-edited lock unless you pass `--force`. This catches mistakes, not
   attackers: anyone who can edit the file can recompute the digest. Sign
   the file (cosign, minisign, signed git commits) if you need
