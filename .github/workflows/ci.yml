@@ -60,15 +60,15 @@ jobs:
           - archlinux:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Sanitize artifact name
+        id: name
+        run: echo "name=$(echo '${{ matrix.image }}' | tr ':/' '--')" >> "$GITHUB_OUTPUT"
       - name: Capture, drift, repair
         run: |
           mkdir -p out
           docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh capture /src/out/env.lock.json
       - name: Restore on a fresh container
         run: docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh restore /src/out/env.lock.json
-      - name: Sanitize artifact name
-        id: name
-        run: echo "name=$(echo '${{ matrix.image }}' | tr ':/' '--')" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

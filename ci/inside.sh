@@ -60,7 +60,7 @@ if [ "$PHASE" = capture ]; then
   # Locking an unchanged system must not rewrite the file.
   cp "$LOCK" /tmp/before.json
   $S lock -f "$LOCK"
-  cmp "$LOCK" /tmp/before.json
+  python3 -c "import sys; sys.exit(open(sys.argv[1],'rb').read() != open(sys.argv[2],'rb').read())" "$LOCK" /tmp/before.json
   $S sbom -f "$LOCK" -o "${LOCK%.lock.json}.cdx.json"
   $S sbom -f "$LOCK" --format spdx -o "${LOCK%.lock.json}.spdx.json"
 
