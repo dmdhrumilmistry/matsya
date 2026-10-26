@@ -66,6 +66,56 @@ jobs:
           name: matsya-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/matsya
 
+  build-android:
+    name: build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [aarch64-linux-android, x86_64-linux-android, armv7-linux-androideabi]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Use the Android NDK as linker and C compiler
+        run: sh ci/android-env.sh ${{ matrix.target }} >> "$GITHUB_ENV"
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - run: file target/${{ matrix.target }}/release/matsya
+      - uses: actions/upload-artifact@v7
+        with:
+          name: matsya-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/matsya
+
+  termux:
+    name: termux (${{ matrix.arch }})
+    needs: build-android
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-latest, target: x86_64-linux-android }
+          - { arch: aarch64, runner: ubuntu-24.04-arm, target: aarch64-linux-android }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: matsya-${{ matrix.target }}
+          path: bin
+      - run: chmod +x bin/matsya && mkdir -p out && chmod 777 out
+      - name: Capture, drift, repair
+        run: docker run --rm -v "$PWD:/src" termux/termux-docker:${{ matrix.arch }} bash /src/ci/termux.sh capture /src/out/termux.lock.json
+      - name: Restore on a fresh container
+        run: docker run --rm -v "$PWD:/src" termux/termux-docker:${{ matrix.arch }} bash /src/ci/termux.sh restore /src/out/termux.lock.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lock-termux-${{ matrix.arch }}
+          path: out/
+
   sbom-schema:
     name: SBOM schema validation
     needs: build

@@ -74,7 +74,7 @@ pub fn normalize_arch(arch: &str) -> String {
     let n = match a.as_str() {
         "x86_64" | "amd64" | "x64" => "x86_64",
         "aarch64" | "arm64" | "armv8" => "aarch64",
-        "armv7l" | "armv7" | "armhf" | "armv7h" => "armv7",
+        "armv7l" | "armv7" | "armhf" | "armv7h" | "arm" => "armv7",
         "armel" | "armv6l" | "armhf_v6" => "armv6",
         "i386" | "i486" | "i586" | "i686" | "x86" => "i686",
         "ppc64le" | "ppc64el" => "ppc64le",
@@ -167,7 +167,47 @@ pub fn from_os_release(text: &str, arch: String) -> Platform {
     }
 }
 
+const TERMUX_PREFIX: &str = "/data/data/com.termux/files/usr";
+
+/// Termux (Android) keeps a Debian-style userland under $PREFIX instead of
+/// "/". Returns that prefix when running inside Termux.
+pub fn termux_prefix() -> Option<std::path::PathBuf> {
+    use std::path::{Path, PathBuf};
+    let has_dpkg = |p: &Path| p.join("var/lib/dpkg/status").is_file();
+    if let Some(p) = std::env::var_os("PREFIX").map(PathBuf::from) {
+        if p.to_string_lossy().contains("com.termux") && has_dpkg(&p) {
+            return Some(p);
+        }
+    }
+    let default = PathBuf::from(TERMUX_PREFIX);
+    // Also when started without Termux's environment (adb shell, a static
+    // build): Android has no /etc/os-release.
+    let android = std::env::var_os("TERMUX_VERSION").is_some()
+        || cfg!(target_os = "android")
+        || !Path::new("/etc/os-release").exists() && Path::new("/system/build.prop").exists();
+    (android && has_dpkg(&default)).then_some(default)
+}
+
+/// Root of the Debian-style userland: "/" normally, $PREFIX on Termux.
+pub fn sysroot() -> std::path::PathBuf {
+    termux_prefix().unwrap_or_else(|| std::path::PathBuf::from("/"))
+}
+
 pub fn detect() -> Platform {
+    if termux_prefix().is_some() {
+        // Termux is a rolling distribution of its own, independent of the
+        // Android release underneath.
+        return Platform {
+            os: Some("android".into()),
+            distro: Some("termux".into()),
+            id_like: Some(vec![]),
+            release: Some("rolling".into()),
+            version: Some(String::new()),
+            codename: Some(String::new()),
+            arch: Some(native_arch()),
+            extra: BTreeMap::new(),
+        };
+    }
     if cfg!(target_os = "macos") {
         let version = macos_version().unwrap_or_else(|| "unknown".into());
         let major = version.split('.').next().unwrap_or("").to_string();
@@ -231,8 +271,7 @@ fn rosetta() -> bool {
 /// The architecture packages are built for. This differs from the binary's
 /// own arch for e.g. a 32-bit userland on a 64-bit kernel.
 pub fn native_arch() -> String {
-    if let (Some(a), _) = crate::managers::apt::dpkg_arches(std::path::Path::new(crate::managers::apt::DPKG_DIR), None)
-    {
+    if let (Some(a), _) = crate::managers::apt::dpkg_arches(&crate::managers::apt::dpkg_dir(), None) {
         return normalize_arch(&a);
     }
     if let Some(a) = read_text_opt("/etc/apk/arch").map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {

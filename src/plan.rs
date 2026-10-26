@@ -213,6 +213,36 @@ pub fn fetch_verified(f: &Fetch) -> Result<()> {
     Ok(())
 }
 
+/// Which certificates to trust for HTTPS:
+/// 1. SSL_CERT_FILE, or Termux's bundle in $PREFIX/etc/tls/cert.pem;
+/// 2. the operating system's trust store (corporate CAs work);
+/// 3. on Android, Mozilla's roots (the system store is only reachable
+///    through Java).
+fn root_certs() -> ureq::tls::RootCerts {
+    use ureq::tls::{parse_pem, PemItem, RootCerts};
+    let bundle = std::env::var_os("SSL_CERT_FILE")
+        .map(std::path::PathBuf::from)
+        .or_else(|| crate::platform::termux_prefix().map(|p| p.join("etc/tls/cert.pem")))
+        .filter(|p| p.is_file());
+    if let Some(certs) = bundle.and_then(|p| std::fs::read(p).ok()).map(|pem| {
+        parse_pem(&pem)
+            .filter_map(|i| match i {
+                Ok(PemItem::Certificate(c)) => Some(c.to_owned()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    }) {
+        if !certs.is_empty() {
+            return RootCerts::Specific(std::sync::Arc::new(certs));
+        }
+    }
+    if cfg!(target_os = "android") {
+        RootCerts::WebPki
+    } else {
+        RootCerts::PlatformVerifier
+    }
+}
+
 /// HTTP(S) download with a pure-Rust client. Uses the operating system's
 /// trust store (so corporate CAs work) and the standard proxy variables.
 /// `file://` URLs are copied (handy for mirrors on disk and for tests).
@@ -221,9 +251,9 @@ pub fn download(url: &str, dest: &Path) -> Result<()> {
         std::fs::copy(path, dest)?;
         return Ok(());
     }
-    use ureq::tls::{RootCerts, TlsConfig};
+    use ureq::tls::TlsConfig;
     let agent: ureq::Agent = ureq::Agent::config_builder()
-        .tls_config(TlsConfig::builder().root_certs(RootCerts::PlatformVerifier).build())
+        .tls_config(TlsConfig::builder().root_certs(root_certs()).build())
         .proxy(ureq::Proxy::try_from_env())
         .timeout_global(Some(std::time::Duration::from_secs(900)))
         .user_agent(concat!("matsya/", env!("CARGO_PKG_VERSION")))
