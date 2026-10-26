@@ -188,8 +188,12 @@ impl Rpm {
         Rpm { root: root.to_path_buf() }
     }
 
+    /// The installed frontend, found on PATH or in the standard system
+    /// directories, so detection works with an empty PATH too.
     pub fn frontend(&self) -> Option<&'static str> {
-        ["dnf5", "dnf", "yum", "zypper", "microdnf"].into_iter().find(|f| has(f))
+        ["dnf5", "dnf", "yum", "zypper", "microdnf"].into_iter().find(|f| {
+            has(f) || ["usr/bin", "bin", "usr/sbin", "sbin"].iter().any(|d| self.root.join(d).join(f).is_file())
+        })
     }
 
     fn headers(&self) -> Result<Vec<Header>> {

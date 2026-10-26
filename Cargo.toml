@@ -9,7 +9,18 @@ repository = "https://github.com/dmdhrumilmistry/matsya"
 readme = "README.md"
 keywords = ["lockfile", "sbom", "cyclonedx", "spdx", "reproducibility"]
 categories = ["command-line-utilities", "development-tools"]
-exclude = ["examples/*", "tests/fixtures/*", ".github/*"]
+homepage = "https://github.com/dmdhrumilmistry/matsya"
+include = [
+  "src/**/*.rs",
+  "tests/fixtures/**",
+  "examples/debian-12.lock.json",
+  "examples/multi-machine.lock.json",
+  "docs/*.md",
+  "Cargo.toml",
+  "Cargo.lock",
+  "README.md",
+  "LICENSE",
+]
 
 [dependencies]
 base64 = "0.22"

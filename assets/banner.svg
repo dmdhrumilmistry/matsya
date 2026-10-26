@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" role="img" aria-labelledby="bt bd">
+  <title id="bt">matsya</title>
+  <desc id="bd">matsya: lock files and SBOMs for OS package managers</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06142a"/>
+      <stop offset="0.6" stop-color="#0b2e52"/>
+      <stop offset="1" stop-color="#0a5866"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff1bf"/>
+      <stop offset="0.5" stop-color="#f7c044"/>
+      <stop offset="1" stop-color="#e98a2a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="360" rx="28" fill="url(#bg)"/>
+  <path d="M0 300 C 160 270, 300 330, 470 300 S 780 268, 940 300 S 1160 330, 1280 292 V332 Q1280 360 1252 360 H28 Q0 360 0 332Z" fill="#0f8c95" opacity="0.35"/>
+  <path d="M0 326 C 180 304, 330 352, 500 326 S 820 298, 980 326 S 1190 350, 1280 320 V332 Q1280 360 1252 360 H28 Q0 360 0 332Z" fill="#0b6878" opacity="0.6"/>
+  <svg x="56" y="40" width="280" height="280" viewBox="0 0 512 512">
+  <title id="title">matsya</title>
+  <desc id="desc">Matsya, the horned golden fish, towing Manu's boat full of packages through the flood.</desc>
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#081a33"/>
+      <stop offset="0.55" stop-color="#0e3a64"/>
+      <stop offset="1" stop-color="#0c6f80"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.5" cy="0.3" r="0.55">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1bf"/>
+      <stop offset="0.4" stop-color="#f7c044"/>
+      <stop offset="1" stop-color="#e2761c"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7b32b"/>
+      <stop offset="1" stop-color="#d4471b"/>
+    </linearGradient>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a5432"/>
+      <stop offset="1" stop-color="#4e2a17"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="256" cy="256" r="236"/></clipPath>
+  </defs>
+
+  <circle cx="256" cy="256" r="236" fill="url(#sea)"/>
+  <circle cx="256" cy="256" r="236" fill="url(#moon)"/>
+
+  <g clip-path="url(#disc)">
+    <!-- stars -->
+    <g fill="#fff1bf" opacity="0.8">
+      <circle cx="120" cy="120" r="2.5"/><circle cx="168" cy="82" r="1.8"/><circle cx="88" cy="190" r="1.6"/>
+      <circle cx="232" cy="64" r="2"/><circle cx="380" cy="300" r="1.6"/><circle cx="420" cy="104" r="1.8"/>
+    </g>
+
+    <!-- back wave -->
+    <path d="M0 372 C 60 344, 120 396, 184 368 S 300 340, 364 368 S 470 396, 512 362 V512 H0Z" fill="#15a6a2" opacity="0.5"/>
+
+    <!-- the rope from Matsya's horn to the boat -->
+    <path d="M413 98 C 330 30, 176 84, 199 322" fill="none" stroke="#f3e2b3" stroke-width="5" stroke-linecap="round"/>
+    <path d="M413 98 C 330 30, 176 84, 199 322" fill="none" stroke="#b98a3e" stroke-width="5" stroke-linecap="round" stroke-dasharray="3 9"/>
+
+    <!-- Manu's boat with its cargo: packages -->
+    <g>
+      <path d="M58 350 H 214 C 206 376, 186 392, 162 394 H 108 C 84 392, 64 376, 58 350 Z" fill="url(#hull)"/>
+      <path d="M58 350 H 214" stroke="#f7c044" stroke-width="5" stroke-linecap="round"/>
+      <!-- bow post the rope is tied to -->
+      <path d="M199 350 V 320" stroke="#4e2a17" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="199" cy="320" r="5" fill="#f7c044"/>
+      <!-- isometric cubes -->
+      <g stroke="#0b3a3a" stroke-width="2" stroke-linejoin="round">
+        <g transform="translate(104 328)">
+          <path d="M0 -12 L 18 -2 L 0 8 L -18 -2 Z" fill="#c9f5e1"/>
+          <path d="M-18 -2 L 0 8 L 0 26 L -18 16 Z" fill="#7be0b5"/>
+          <path d="M18 -2 L 0 8 L 0 26 L 18 16 Z" fill="#33a982"/>
+        </g>
+        <g transform="translate(142 328)">
+          <path d="M0 -12 L 18 -2 L 0 8 L -18 -2 Z" fill="#c9f5e1"/>
+          <path d="M-18 -2 L 0 8 L 0 26 L -18 16 Z" fill="#7be0b5"/>
+          <path d="M18 -2 L 0 8 L 0 26 L 18 16 Z" fill="#33a982"/>
+        </g>
+        <g transform="translate(123 304)">
+          <path d="M0 -12 L 18 -2 L 0 8 L -18 -2 Z" fill="#fff1bf"/>
+          <path d="M-18 -2 L 0 8 L 0 26 L -18 16 Z" fill="#f7c044"/>
+          <path d="M18 -2 L 0 8 L 0 26 L 18 16 Z" fill="#d4881b"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- front waves -->
+    <path d="M0 400 C 70 376, 128 424, 196 398 S 316 372, 384 398 S 480 424, 512 394 V512 H0Z" fill="#0f8c95"/>
+    <path d="M0 440 C 80 418, 146 462, 216 440 S 340 414, 408 440 S 486 462, 512 436 V512 H0Z" fill="#0b6878"/>
+    <path d="M196 398 C 226 384, 256 384, 282 392" stroke="#c5f6ef" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.7"/>
+    <path d="M404 440 C 428 428, 452 429, 470 435" stroke="#c5f6ef" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <!-- Matsya -->
+  <g transform="translate(28 16) scale(0.84)">
+    <!-- tail -->
+    <path d="M196 252 C 168 214, 150 204, 134 192 C 150 230, 148 276, 132 310 C 150 298, 172 284, 198 258 Z" fill="url(#fin)"/>
+    <!-- dorsal fin -->
+    <path d="M298 178 C 318 128, 368 124, 390 154 C 356 154, 326 164, 298 178 Z" fill="url(#fin)"/>
+    <!-- pelvic fin -->
+    <path d="M316 282 C 330 316, 368 322, 386 296 C 358 298, 336 290, 316 282 Z" fill="url(#fin)"/>
+    <!-- body -->
+    <path d="M186 254 C 236 172, 364 140, 452 190 C 468 199, 480 211, 486 222 C 476 236, 462 248, 444 256 C 354 302, 236 314, 186 254 Z" fill="url(#gold)"/>
+    <!-- belly highlight -->
+    <path d="M226 262 C 290 290, 380 282, 440 252" stroke="#fff1bf" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.55"/>
+    <!-- scales -->
+    <g fill="none" stroke="#c4651a" stroke-width="5" stroke-linecap="round" opacity="0.5">
+      <path d="M252 222 q 16 18 0 38"/><path d="M290 206 q 18 24 0 50"/><path d="M330 198 q 20 28 0 58"/>
+      <path d="M370 198 q 18 26 0 54"/>
+    </g>
+    <!-- gill -->
+    <path d="M418 200 C 402 222, 402 246, 418 266" stroke="#b5501a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- horn: Manu tied the boat to it -->
+    <path d="M436 190 C 436 150, 444 118, 459 96 C 463 124, 459 158, 451 194 Z" fill="url(#gold)" stroke="#b5501a" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="459" cy="96" r="6" fill="#f3e2b3" stroke="#b98a3e" stroke-width="2"/>
+    <!-- eye -->
+    <circle cx="458" cy="212" r="12" fill="#081a33"/>
+    <circle cx="462" cy="208" r="4" fill="#ffffff"/>
+  </g>
+
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#f7c044" stroke-width="10"/>
+  <circle cx="256" cy="256" r="226" fill="none" stroke="#fff1bf" stroke-width="1.5" opacity="0.35"/>
+</svg>
+  <g font-family="'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,'Liberation Sans','DejaVu Sans',FreeSans,sans-serif">
+    <text x="384" y="168" font-size="112" font-weight="800" fill="url(#word)" letter-spacing="2">matsya</text>
+    <text x="388" y="222" font-size="34" font-weight="500" fill="#e8f1ff">Lock files &amp; SBOMs for OS package managers</text>
+    <g font-size="22" font-weight="600" fill="#081a33">
+      <rect x="388" y="248" width="70" height="36" rx="18" fill="#7be0b5"/><text x="423" y="273" text-anchor="middle">apt</text>
+      <rect x="468" y="248" width="70" height="36" rx="18" fill="#7be0b5"/><text x="503" y="273" text-anchor="middle">dnf</text>
+      <rect x="548" y="248" width="96" height="36" rx="18" fill="#7be0b5"/><text x="596" y="273" text-anchor="middle">zypper</text>
+      <rect x="654" y="248" width="70" height="36" rx="18" fill="#7be0b5"/><text x="689" y="273" text-anchor="middle">apk</text>
+      <rect x="734" y="248" width="104" height="36" rx="18" fill="#7be0b5"/><text x="786" y="273" text-anchor="middle">pacman</text>
+      <rect x="848" y="248" width="142" height="36" rx="18" fill="#f7c044"/><text x="919" y="273" text-anchor="middle">Homebrew</text>
+      <rect x="1000" y="248" width="216" height="36" rx="18" fill="none" stroke="#f7c044" stroke-width="2"/><text x="1108" y="273" text-anchor="middle" fill="#f7c044">CycloneDX · SPDX</text>
+    </g>
+  </g>
+</svg>
