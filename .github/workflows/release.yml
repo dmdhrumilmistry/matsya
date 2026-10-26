@@ -62,7 +62,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd dist && cat *.sha256 > SHA256SUMS
-          gh release create "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" --generate-notes --title "${GITHUB_REF_NAME}" ./*
+          # A release for this tag may already exist (created by hand from
+          # the GitHub UI); add the binaries to it instead of failing.
+          if gh release view "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" --clobber ./*
+          else
+            gh release create "${GITHUB_REF_NAME}" -R "${GITHUB_REPOSITORY}" --generate-notes --title "${GITHUB_REF_NAME}" ./*
+          fi
 
   crate:
     name: publish to crates.io
