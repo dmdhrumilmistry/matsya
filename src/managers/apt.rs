@@ -1,7 +1,7 @@
 //! Debian / Ubuntu (dpkg + apt) backend.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
@@ -9,7 +9,7 @@ use super::{by_key, resolve_dependencies, Manager, Options};
 use crate::formats::read_text_decompressed;
 use crate::model::{vstr, vstrs, Package, Section, Source};
 use crate::plan::{Fetch, Plan, Step, Write};
-use crate::platform::Platform;
+use crate::platform::{sysroot, termux_prefix, Platform};
 use crate::util::{
     compact_ts, parse_deb822, read_text, read_text_opt, rfc2822_to_iso, sha256_file, sha256_hex, warn, Result,
 };
@@ -28,9 +28,38 @@ pub fn deb_arch(canonical: &str) -> String {
     .to_string()
 }
 
-pub const DPKG_DIR: &str = "/var/lib/dpkg";
-pub const LISTS_DIR: &str = "/var/lib/apt/lists";
-const EXTENDED_STATES: &str = "/var/lib/apt/extended_states";
+/// dpkg/apt live under the system root: "/" normally, $PREFIX on Termux.
+pub fn dpkg_dir() -> PathBuf {
+    sysroot().join("var/lib/dpkg")
+}
+fn apt_state() -> PathBuf {
+    sysroot().join("var/lib/apt")
+}
+fn lists_dir() -> PathBuf {
+    apt_state().join("lists")
+}
+fn apt_etc() -> PathBuf {
+    sysroot().join("etc/apt")
+}
+fn doc_dir() -> PathBuf {
+    match termux_prefix() {
+        Some(p) => p.join("share/doc"),
+        None => PathBuf::from("/usr/share/doc"),
+    }
+}
+
+/// The architecture name dpkg uses on a platform. Termux spells them its
+/// own way (aarch64, arm) instead of Debian's (arm64, armhf).
+pub fn arch_name(plat: &Platform) -> String {
+    if plat.distro() == "termux" {
+        match plat.arch() {
+            "armv7" => "arm".into(),
+            other => other.into(),
+        }
+    } else {
+        deb_arch(plat.arch())
+    }
+}
 
 /// A dpkg package plus its raw relationship fields.
 pub struct DpkgEntry {
@@ -420,14 +449,14 @@ fn native_or_empty(arches: &[String]) -> String {
 
 impl Apt {
     fn dpkg(&self) -> Result<(Vec<DpkgEntry>, Vec<String>)> {
-        Ok(parse_status(&read_status(Path::new(DPKG_DIR))?))
+        Ok(parse_status(&read_status(&dpkg_dir())?))
     }
 
     /// Auto-installed marks, or None when apt is absent (dpkg-only system).
     fn auto_marks(&self) -> Option<HashSet<(String, String)>> {
-        match read_text_opt(EXTENDED_STATES) {
+        match read_text_opt(apt_state().join("extended_states")) {
             Some(t) => Some(parse_extended_states(&t)),
-            None if Path::new("/var/lib/apt").is_dir() => Some(HashSet::new()),
+            None if apt_state().is_dir() => Some(HashSet::new()),
             None => None,
         }
     }
@@ -436,8 +465,8 @@ impl Apt {
     /// sources and apt's own list file naming.
     fn index_targets(&self) -> Vec<Target> {
         let mut files = Vec::new();
-        let mut paths = vec!["/etc/apt/sources.list".to_string()];
-        let mut extra: Vec<String> = std::fs::read_dir("/etc/apt/sources.list.d")
+        let mut paths = vec![apt_etc().join("sources.list").to_string_lossy().into_owned()];
+        let mut extra: Vec<String> = std::fs::read_dir(apt_etc().join("sources.list.d"))
             .map(|d| d.flatten().map(|e| e.path().to_string_lossy().into_owned()).collect())
             .unwrap_or_default();
         extra.retain(|p| p.ends_with(".list") || p.ends_with(".sources"));
@@ -448,11 +477,12 @@ impl Apt {
                 files.push((p, t));
             }
         }
-        let (native, foreign) = dpkg_arches(Path::new(DPKG_DIR), None);
+        let (native, foreign) = dpkg_arches(&dpkg_dir(), None);
         let mut arches: Vec<String> = native.into_iter().collect();
         arches.extend(foreign);
         arches.push("all".into());
-        let lists = Path::new(LISTS_DIR);
+        let lists = lists_dir();
+        let lists = lists.as_path();
         let find = |base: &str| -> Option<String> {
             let name = uri_to_filename(base);
             ["", ".lz4", ".gz", ".xz", ".zst"]
@@ -523,8 +553,8 @@ impl Apt {
 
     fn repo_records(&self, targets: &[Target], opts: &Options) -> (Vec<Value>, Vec<String>) {
         let mut files = Vec::new();
-        let mut paths = vec!["/etc/apt/sources.list".to_string()];
-        let mut extra: Vec<String> = std::fs::read_dir("/etc/apt/sources.list.d")
+        let mut paths = vec![apt_etc().join("sources.list").to_string_lossy().into_owned()];
+        let mut extra: Vec<String> = std::fs::read_dir(apt_etc().join("sources.list.d"))
             .map(|d| d.flatten().map(|e| e.path().to_string_lossy().into_owned()).collect())
             .unwrap_or_default();
         extra.retain(|p| p.ends_with(".list") || p.ends_with(".sources"));
@@ -591,7 +621,7 @@ impl Apt {
     }
 
     fn translate(&self, section: &Section, src: &Platform, dst: &Platform) -> Vec<Package> {
-        let (s, d) = (deb_arch(src.arch()), deb_arch(dst.arch()));
+        let (s, d) = (arch_name(src), arch_name(dst));
         section
             .packages
             .iter()
@@ -633,7 +663,10 @@ impl Apt {
         for ((uri, suite), (comps, key, ids)) in groups {
             let sha = vstr(&key, "sha256");
             let ext = if key.get("armored").and_then(Value::as_bool).unwrap_or(false) { ".asc" } else { ".gpg" };
-            let kpath = format!("/etc/apt/keyrings/matsya-{}{ext}", &sha[..sha.len().min(16)]);
+            let kpath = apt_etc()
+                .join(format!("keyrings/matsya-{}{ext}", &sha[..sha.len().min(16)]))
+                .to_string_lossy()
+                .into_owned();
             if written.insert(kpath.clone()) {
                 plan.add(Step::write(
                     format!("keyring sha256 {sha}"),
@@ -658,7 +691,10 @@ impl Apt {
             plan.add(Step::write(
                 format!("add repository {}", ids.join(", ")),
                 Write {
-                    path: format!("/etc/apt/sources.list.d/matsya-{safe}.sources"),
+                    path: apt_etc()
+                        .join(format!("sources.list.d/matsya-{safe}.sources"))
+                        .to_string_lossy()
+                        .into_owned(),
                     content,
                     base64: false,
                     mode: 0o644,
@@ -681,7 +717,7 @@ fn reason(p: &Package, auto: &Option<HashSet<(String, String)>>, native: &str) -
 
 /// The package whose file list contains `path` (dpkg -S).
 fn dpkg_owner(path: &str) -> Option<String> {
-    let dir = Path::new(DPKG_DIR).join("info");
+    let dir = dpkg_dir().join("info");
     for e in std::fs::read_dir(dir).ok()?.flatten() {
         let name = e.file_name().to_string_lossy().into_owned();
         let Some(pkg) = name.strip_suffix(".list") else { continue };
@@ -725,7 +761,7 @@ fn keyring(signed_by: &str, opts: &Options) -> Option<Value> {
 }
 
 fn licenses_for(name: &str) -> Vec<String> {
-    read_text_opt(format!("/usr/share/doc/{name}/copyright")).map(|t| dep5_licenses(&t)).unwrap_or_default()
+    read_text_opt(doc_dir().join(name).join("copyright")).map(|t| dep5_licenses(&t)).unwrap_or_default()
 }
 
 /// What `apt-get --version` / `dpkg --version` print, from the status db.
@@ -784,11 +820,11 @@ impl Manager for Apt {
     }
 
     fn available(&self) -> bool {
-        Path::new(DPKG_DIR).join("status").is_file()
+        dpkg_dir().join("status").is_file()
     }
 
     fn key_of(&self, pkg: &Package, plat: &Platform) -> String {
-        let native = deb_arch(plat.arch());
+        let native = arch_name(plat);
         let a = pkg.arch();
         if a == native || a == "all" || a.is_empty() {
             pkg.name.clone()
@@ -800,7 +836,7 @@ impl Manager for Apt {
     fn installed(&self, plat: &Platform) -> Result<Vec<Package>> {
         let (entries, _) = self.dpkg()?;
         let manual = self.auto_marks();
-        let native = deb_arch(plat.arch());
+        let native = arch_name(plat);
         Ok(entries
             .into_iter()
             .map(|e| {
@@ -812,7 +848,7 @@ impl Manager for Apt {
     }
 
     fn capture(&self, plat: &Platform, opts: &Options) -> Result<Section> {
-        let stanzas = read_status(Path::new(DPKG_DIR))?;
+        let stanzas = read_status(&dpkg_dir())?;
         let (entries, problems) = parse_status(&stanzas);
         for m in problems {
             warn(&m);
@@ -821,7 +857,7 @@ impl Manager for Apt {
         if manual.is_none() {
             warn("apt is not installed; every package is recorded as manually installed");
         }
-        let native = deb_arch(plat.arch());
+        let native = arch_name(plat);
         let mut requires = HashMap::new();
         let mut provides = HashMap::new();
         let mut pkgs = Vec::new();
@@ -876,7 +912,7 @@ impl Manager for Apt {
         Ok(Section {
             tool: Some(tool_version(&stanzas, &native)),
             repositories: Some(repos),
-            foreign_architectures: Some(dpkg_arches(Path::new(DPKG_DIR), Some(&stanzas)).1),
+            foreign_architectures: Some(dpkg_arches(&dpkg_dir(), Some(&stanzas)).1),
             packages: pkgs,
             ..Default::default()
         })
@@ -884,14 +920,14 @@ impl Manager for Apt {
 
     fn prepare(&self, section: &Section, src: &Platform, dst: &Platform, opts: &Options) -> Result<Plan> {
         let mut plan = Plan::new("apt (prepare)");
-        let native = deb_arch(dst.arch());
+        let native = arch_name(dst);
         let need: BTreeSet<String> = self
             .translate(section, src, dst)
             .iter()
             .map(|p| p.arch().to_string())
             .filter(|a| a != &native && a != "all" && !a.is_empty())
             .collect();
-        let have: HashSet<String> = dpkg_arches(Path::new(DPKG_DIR), None).1.into_iter().collect();
+        let have: HashSet<String> = dpkg_arches(&dpkg_dir(), None).1.into_iter().collect();
         for a in need {
             if !have.contains(&a) {
                 plan.add(Step::cmd(format!("enable multiarch for {a}"), ["dpkg", "--add-architecture", &a]));
@@ -1122,6 +1158,28 @@ mod tests {
         let c = &found[&("curl".to_string(), "amd64".to_string(), "7.88.1-10+deb12u5".to_string())];
         assert_eq!(c.size, Some(316176));
         assert!(c.sha256.as_deref().unwrap().starts_with("0f4c"));
+    }
+
+    #[test]
+    fn termux_architecture_names() {
+        let termux = |arch: &str| Platform {
+            os: Some("android".into()),
+            distro: Some("termux".into()),
+            release: Some("rolling".into()),
+            arch: Some(arch.into()),
+            ..Default::default()
+        };
+        assert_eq!(arch_name(&termux("aarch64")), "aarch64");
+        assert_eq!(arch_name(&termux("armv7")), "arm");
+        assert_eq!(arch_name(&termux("x86_64")), "x86_64");
+        assert_eq!(arch_name(&deb12()), "amd64");
+        // Termux packages are keyed by bare name like Debian's native ones.
+        let mut p = Package::new("jq", "1.7.1");
+        p.arch = Some("aarch64".into());
+        assert_eq!(Apt.key_of(&p, &termux("aarch64")), "jq");
+        p.arch = Some("all".into());
+        assert_eq!(Apt.key_of(&p, &termux("aarch64")), "jq");
+        assert_eq!(crate::platform::normalize_arch("arm"), "armv7");
     }
 
     #[test]

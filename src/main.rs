@@ -511,7 +511,10 @@ fn cmd_apply(
         snapshot: !no_snapshot,
         add_repos,
         refresh: !no_refresh,
-        cache_dir: cache_dir.into(),
+        cache_dir: match platform::termux_prefix() {
+            Some(p) if cache_dir == "/var/cache/matsya" => p.join("var/cache/matsya").to_string_lossy().into_owned(),
+            _ => cache_dir.into(),
+        },
         captured_at: env.captured_at().into(),
         ..Default::default()
     };
@@ -552,7 +555,8 @@ fn cmd_apply(
             warn("skipping brew: Homebrew must not run as root; run `matsya apply --managers brew` as your user");
             continue;
         }
-        if name != "brew" && !is_root() && !dry_run {
+        // Termux runs as the app's own user and owns $PREFIX: no root needed.
+        if name != "brew" && !is_root() && !dry_run && plat.distro() != "termux" {
             crate::bail!("{name} changes need root; re-run with sudo (or use --dry-run to preview)");
         }
         selected.push((m, section));

@@ -21,13 +21,19 @@ jobs:
           - { target: aarch64-unknown-linux-musl, runner: ubuntu-24.04-arm, asset: matsya-aarch64-linux }
           - { target: aarch64-apple-darwin, runner: macos-latest, asset: matsya-aarch64-macos }
           - { target: x86_64-apple-darwin, runner: macos-latest, asset: matsya-x86_64-macos }
+          - { target: aarch64-linux-android, runner: ubuntu-latest, asset: matsya-aarch64-android }
+          - { target: x86_64-linux-android, runner: ubuntu-latest, asset: matsya-x86_64-android }
+          - { target: armv7-linux-androideabi, runner: ubuntu-latest, asset: matsya-armv7-android }
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - if: runner.os == 'Linux'
+      - if: contains(matrix.target, 'musl')
         run: sudo apt-get install -y -q musl-tools
+      - if: contains(matrix.target, 'android')
+        name: Use the Android NDK as linker and C compiler
+        run: sh ci/android-env.sh ${{ matrix.target }} >> "$GITHUB_ENV"
       - run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Package
         run: |
