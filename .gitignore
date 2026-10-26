@@ -5,6 +5,6 @@ build/
 dist/
 out/
 .venv/
-*.cdx.json
-*.spdx.json
+/*.cdx.json
+/*.spdx.json
 /syslock.lock.json

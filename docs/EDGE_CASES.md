@@ -14,7 +14,7 @@ containers in `.github/workflows/ci.yml`.
 | Derivative distros (Pop!_OS, Mint, Rocky vs Alma) | Matched through `ID_LIKE` only with `--allow-cross-release`. Versions usually differ, so expect `--best-effort`. |
 | Several machines, one file | `environments` is a map. `syslock lock` only updates the current machine's entry. Use `syslock envs` to list them and `--env` to choose one. |
 | macOS 14 lock on macOS 15 | Brew-only environments match on distro and arch and ignore the macOS release, because Homebrew versions don't depend on it. |
-| macOS lock on Linux (or the reverse) for Homebrew | Choose it with `--env macos-15-aarch64`. Bottle hashes are recorded for every platform the formula supports, so Linux bottles verify too. Casks are skipped on Linux. |
+| macOS lock on Linux (or the reverse) for Homebrew | Choose it with `--env macos-15-aarch64`. Formula versions carry over. Bottle hashes are per platform (Homebrew reports the one it runs on), so on another platform Homebrew's own checksum verification applies instead of the lock's. Casks are skipped on Linux. |
 | Rosetta shell on Apple Silicon | `sysctl.proc_translated` is checked so the platform reports `aarch64`, not `x86_64`. |
 | 32-bit userland on a 64-bit kernel | The architecture comes from `dpkg --print-architecture` / `apk --print-arch`, not `uname -m`. |
 | Lock file copied without its repos | Distro repos are assumed to exist on the target. Third-party repos and keys are embedded and recreated only with `--add-repos`. |

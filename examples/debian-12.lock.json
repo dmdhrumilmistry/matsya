@@ -1,0 +1,3124 @@
+{
+  "environments": {
+    "debian-12-x86_64": {
+      "capturedAt": "2026-10-26T09:06:09Z",
+      "digest": "sha256:aa29b806cc9234949f1a317cd3590c31b6a3428743d86ce4dff13d3260ae0261",
+      "managers": {
+        "apt": {
+          "foreignArchitectures": [],
+          "packages": [
+            {
+              "arch": "all",
+              "dependencies": [
+                "passwd"
+              ],
+              "filename": "pool/main/a/adduser/adduser_3.134_all.deb",
+              "licenses": [
+                "GPL-2+"
+              ],
+              "name": "adduser",
+              "priority": "important",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "c24fe4eb8e60d8632d72ed104cce7c92cff200847c897dc8ba764b6c47b519e0",
+              "size": 183272,
+              "version": "3.134"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "adduser",
+                "debian-archive-keyring",
+                "gpgv",
+                "libapt-pkg6.0",
+                "libc6",
+                "libgcc-s1",
+                "libgnutls30",
+                "libseccomp2",
+                "libstdc++6",
+                "libsystemd0"
+              ],
+              "filename": "pool/main/a/apt/apt_2.6.1_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "Expat",
+                "GPL-2",
+                "GPL-2+"
+              ],
+              "name": "apt",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "6ea03cbbc7a7bfcee601c9fb08d4e026fd522ede5350561f06867ad9c0a0fa6b",
+              "size": 1372852,
+              "version": "2.6.1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "mawk"
+              ],
+              "essential": true,
+              "filename": "pool/main/b/base-files/base-files_12.4+deb12u15_amd64.deb",
+              "name": "base-files",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "3eb1ea6d85488f488cc2a163b98ad640ef88cee4c79287cf14e361aaf6206f47",
+              "size": 70936,
+              "version": "12.4+deb12u15"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libdebconfclient0",
+                "libselinux1"
+              ],
+              "essential": true,
+              "filename": "pool/main/b/base-passwd/base-passwd_3.6.1_amd64.deb",
+              "licenses": [
+                "GPL-2",
+                "public-domain"
+              ],
+              "name": "base-passwd",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "908ca1b35125f49125ae56945a72bc11ce0fcec85a8d980d10d83bb3a610f518",
+              "size": 59972,
+              "version": "3.6.1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "base-files",
+                "debianutils",
+                "libc6",
+                "libtinfo6"
+              ],
+              "essential": true,
+              "filename": "pool/main/b/bash/bash_5.2.15-2+b13_amd64.deb",
+              "licenses": [
+                "BSD-4-clause-UC and MIT-like",
+                "GFDL-NIV-1.3",
+                "GPL-2+",
+                "GPL-3+",
+                "GPL-3+ with Bison exception",
+                "Latex2e",
+                "permissive"
+              ],
+              "name": "bash",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "82130bb6a560cd2a7234d8018baf73f188f5dd56413d5aa0accc987b2197a6a1",
+              "size": 1490652,
+              "source": {
+                "name": "bash",
+                "version": "5.2.15-2"
+              },
+              "version": "5.2.15-2+b13"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libsystemd0"
+              ],
+              "essential": true,
+              "filename": "pool/main/u/util-linux/bsdutils_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "bsdutils",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "6cae172b006a4603e710e046c3acba8d98d36748894cbe3eeda31d415fec331e",
+              "size": 94412,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "1:2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libacl1",
+                "libattr1",
+                "libc6",
+                "libgmp10",
+                "libselinux1"
+              ],
+              "essential": true,
+              "filename": "pool/main/c/coreutils/coreutils_9.1-1_amd64.deb",
+              "licenses": [
+                "FSFULLR",
+                "GFDL-NIV-1.3",
+                "GPL-3+",
+                "GPL-3+ and BSD-4-clause-UC",
+                "GPL-3+ and ISC"
+              ],
+              "name": "coreutils",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "61038f857e346e8500adf53a2a0a20859f4d3a3b51570cc876b153a2d51a3091",
+              "size": 2896560,
+              "version": "9.1-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "debianutils",
+                "dpkg",
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/d/dash/dash_0.5.12-2_amd64.deb",
+              "licenses": [
+                "BSD-3-Clause",
+                "BSD-3-clause",
+                "GPL-2+",
+                "public-domain"
+              ],
+              "name": "dash",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "33ea40061da2f1a861ec46212b2b6a34f0776a049b1a3f0abce2fb8cb994258f",
+              "size": 91848,
+              "version": "0.5.12-2"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/d/debconf/debconf_1.5.82_all.deb",
+              "licenses": [
+                "BSD-2-clause"
+              ],
+              "name": "debconf",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "74ab14194a3762b2fc717917dcfda42929ab98e3c59295a063344dc551cd7cc8",
+              "size": 121212,
+              "version": "1.5.82"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/d/debian-archive-keyring/debian-archive-keyring_2023.3+deb12u2_all.deb",
+              "name": "debian-archive-keyring",
+              "priority": "important",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "f699e2f88dca05212f2a452b58475f2993cb6993dfbafb1d0205a3291eb8b4b8",
+              "size": 178572,
+              "version": "2023.3+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/d/debianutils/debianutils_5.7-0.5~deb12u1_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "SMAIL-GPL",
+                "public-domain"
+              ],
+              "name": "debianutils",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "55f951359670eb3236c9e2ccd5fac9ccb3db734f5a22aff21589e7a30aee48c9",
+              "size": 102588,
+              "version": "5.7-0.5~deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/d/diffutils/diffutils_3.8-4_amd64.deb",
+              "licenses": [
+                "FSFAP",
+                "FSFULLR",
+                "GFDL-NIV-1.3",
+                "GPL-2+",
+                "GPL-3+",
+                "GPL-3+ and FSFULLR",
+                "GPL-3+ with autoconf exception",
+                "GPL-3+ with texinfo exception",
+                "LGPL-2.0+",
+                "LGPL-2.1+",
+                "LGPL-3.0+",
+                "LGPL-3.0+ or GPL-2+",
+                "X11",
+                "public-domain"
+              ],
+              "name": "diffutils",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "8bdfedc14c1035e3750e9f055ac9c1ecd9b5d05d9e6dc6466c4e9237eef407dd",
+              "size": 351740,
+              "version": "1:3.8-4"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libbz2-1.0",
+                "libc6",
+                "liblzma5",
+                "libmd0",
+                "libselinux1",
+                "libzstd1",
+                "tar",
+                "zlib1g"
+              ],
+              "essential": true,
+              "filename": "pool/main/d/dpkg/dpkg_1.21.23_amd64.deb",
+              "licenses": [
+                "BSD-2-clause",
+                "GPL-2",
+                "GPL-2+",
+                "public-domain-s-s-d"
+              ],
+              "name": "dpkg",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "f89e9f8d1a4a50ade44be3ed59a6ec55460fce205d2f8520c5c492137c5b609b",
+              "size": 1567804,
+              "version": "1.21.23"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libblkid1",
+                "libc6",
+                "libcom-err2",
+                "libext2fs2",
+                "libss2",
+                "libuuid1",
+                "logsave"
+              ],
+              "filename": "pool/main/e/e2fsprogs/e2fsprogs_1.47.0-2+b2_amd64.deb",
+              "licenses": [
+                "Apache-2",
+                "BSD-3-Clause",
+                "GPL or MIT-US-export",
+                "GPL-2",
+                "GPL-2+ with Texinfo exception",
+                "ISC",
+                "Kazlib",
+                "LGPL-2",
+                "Latex2e"
+              ],
+              "name": "e2fsprogs",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "fedd424691c08ef0739729026be298e7be8236337bf8e031b3c7ec66794e6fc2",
+              "size": 571920,
+              "source": {
+                "name": "e2fsprogs",
+                "version": "1.47.0-2"
+              },
+              "version": "1.47.0-2+b2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libselinux1"
+              ],
+              "essential": true,
+              "filename": "pool/main/f/findutils/findutils_4.9.0-4_amd64.deb",
+              "licenses": [
+                "BSD-3-clause and/or GPL-3+",
+                "FSFAP",
+                "FSFULLR",
+                "GFDL-NIV-1.3+",
+                "GPL with automake exception",
+                "GPL-2+",
+                "GPL-2+ with Autoconf-data exception",
+                "GPL-3+",
+                "GPL-3+ with Autoconf-data exception",
+                "GPL-3+ with Bison-2.2 exception",
+                "ISC and/or LGPL-2.1+",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3",
+                "LGPL-3+",
+                "X11",
+                "public-domain"
+              ],
+              "name": "findutils",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "5dd86bd0af4aa73f067dfd6b8339dd868f2dd84056aa79db29d1206d4fbc5e04",
+              "size": 635500,
+              "version": "4.9.0-4"
+            },
+            {
+              "arch": "amd64",
+              "filename": "pool/main/g/gcc-12/gcc-12-base_12.2.0-14+deb12u1_amd64.deb",
+              "name": "gcc-12-base",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "1896a2aacf4ad681ff5eacc24a5b0ca4d5d9c9b9c9e4b6de5197bc1e116ea619",
+              "size": 37596,
+              "source": {
+                "name": "gcc-12",
+                "version": "12.2.0-14+deb12u1"
+              },
+              "version": "12.2.0-14+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libbz2-1.0",
+                "libc6",
+                "libgcrypt20",
+                "libgpg-error0",
+                "zlib1g"
+              ],
+              "filename": "pool/main/g/gnupg2/gpgv_2.2.40-1.1+deb12u2_amd64.deb",
+              "licenses": [
+                "CC0-1.0",
+                "Expat",
+                "GPL-3+",
+                "GPL-3+ or BSD-3-clause",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "RFC-Reference",
+                "TinySCHEME",
+                "permissive"
+              ],
+              "name": "gpgv",
+              "priority": "important",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "2966dc0a0b89caa65c3b4a386fa4ed0b6ca2239cd51ec40e6920507aedcdb14a",
+              "size": 648768,
+              "source": {
+                "name": "gnupg2",
+                "version": "2.2.40-1.1+deb12u2"
+              },
+              "version": "2.2.40-1.1+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "dpkg",
+                "libc6",
+                "libpcre2-8-0"
+              ],
+              "essential": true,
+              "filename": "pool/main/g/grep/grep_3.8-5_amd64.deb",
+              "licenses": [
+                "GPL-3+"
+              ],
+              "name": "grep",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "3264acea728df3c48a54f20e9291b965130e306b9d00adac76647049da7196df",
+              "size": 421444,
+              "version": "3.8-5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "dpkg",
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/g/gzip/gzip_1.12-1_amd64.deb",
+              "licenses": [
+                "FSF-manpages",
+                "GFDL-1.3+-no-invariant",
+                "GPL-3+"
+              ],
+              "name": "gzip",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "eabec1dde2834f72540d7b93fc5df2625f52611c06d93d61f5cdb12480e0e6a3",
+              "size": 140364,
+              "version": "1.12-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/h/hostname/hostname_3.23+nmu1_amd64.deb",
+              "licenses": [
+                "GPL-2"
+              ],
+              "name": "hostname",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "17d9a2f3c05004499d80e180d2440fd716f84c32b65f09d96c9a024af4d1d0e7",
+              "size": 10500,
+              "version": "3.23+nmu1"
+            },
+            {
+              "arch": "all",
+              "dependencies": [
+                "usr-is-merged"
+              ],
+              "essential": true,
+              "filename": "pool/main/i/init-system-helpers/init-system-helpers_1.65.2+deb12u1_all.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "GPL-2+"
+              ],
+              "name": "init-system-helpers",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "afab482524c64e4e256eb5cab43c1a96dc493ec476d94f19f1a5ec3de5fa0fef",
+              "size": 39020,
+              "version": "1.65.2+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libjq1"
+              ],
+              "filename": "pool/updates/main/j/jq/jq_1.6-2.1+deb12u3_amd64.deb",
+              "licenses": [
+                "CC-BY-3.0",
+                "Expat",
+                "GPL-2.0+",
+                "MIT"
+              ],
+              "name": "jq",
+              "priority": "optional",
+              "reason": "manual",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "c25f3fda201207ed98b1d63686f2d81b9dfeb99f1ab2d1d35fb3f7b6a1c107dc",
+              "size": 64432,
+              "version": "1.6-2.1+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/a/acl/libacl1_2.3.1-3_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "LGPL-2+"
+              ],
+              "name": "libacl1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "8be9df5795114bfe90e2be3d208ef47a5edd3fc7b3e20d387a597486d444e5e2",
+              "size": 31488,
+              "source": {
+                "name": "acl",
+                "version": "2.3.1-3"
+              },
+              "version": "2.3.1-3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libbz2-1.0",
+                "libc6",
+                "libgcc-s1",
+                "libgcrypt20",
+                "liblz4-1",
+                "liblzma5",
+                "libstdc++6",
+                "libsystemd0",
+                "libudev1",
+                "libxxhash0",
+                "libzstd1",
+                "zlib1g"
+              ],
+              "filename": "pool/main/a/apt/libapt-pkg6.0_2.6.1_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "Expat",
+                "GPL-2",
+                "GPL-2+"
+              ],
+              "name": "libapt-pkg6.0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "ccab743f6784b4cc7bd69e1810630edaf726cd69c1e735e39a16266d470bfdc0",
+              "size": 907236,
+              "source": {
+                "name": "apt",
+                "version": "2.6.1"
+              },
+              "version": "2.6.1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/a/attr/libattr1_2.5.1-4_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "LGPL-2+"
+              ],
+              "name": "libattr1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "c4945123d66d0503ba42e2fc0585abc76d0838978c6d277b9cc37a4da25d1a34",
+              "size": 22164,
+              "source": {
+                "name": "attr",
+                "version": "1:2.5.1-4"
+              },
+              "version": "1:2.5.1-4"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/a/audit/libaudit-common_3.0.9-1_all.deb",
+              "licenses": [
+                "GPL-2",
+                "LGPL-2.1"
+              ],
+              "name": "libaudit-common",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "17d0341ca6ce604ce59c296780ac2c2a24141a769823c50669af942c025e6591",
+              "size": 10448,
+              "source": {
+                "name": "audit",
+                "version": "1:3.0.9-1"
+              },
+              "version": "1:3.0.9-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libaudit-common",
+                "libc6",
+                "libcap-ng0"
+              ],
+              "filename": "pool/main/a/audit/libaudit1_3.0.9-1_amd64.deb",
+              "licenses": [
+                "GPL-2",
+                "LGPL-2.1"
+              ],
+              "name": "libaudit1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "30954df4b5a7c505661ba8ae5e6ea94f5805e408899fb400783bb166eb5ff306",
+              "size": 46764,
+              "source": {
+                "name": "audit",
+                "version": "1:3.0.9-1"
+              },
+              "version": "1:3.0.9-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/u/util-linux/libblkid1_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "libblkid1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "5a083377f29191cafcdf0f91ec124349b4a7895b531556633a136e43c6d53943",
+              "size": 147380,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/b/bzip2/libbz2-1.0_1.0.8-5+b1_amd64.deb",
+              "licenses": [
+                "BSD-variant",
+                "GPL-2"
+              ],
+              "name": "libbz2-1.0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "54149da3f44b22d523b26b692033b84503d822cc5122fed606ea69cc83ca5aeb",
+              "size": 47348,
+              "source": {
+                "name": "bzip2",
+                "version": "1.0.8-5"
+              },
+              "version": "1.0.8-5+b1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/g/glibc/libc-bin_2.36-9+deb12u14_amd64.deb",
+              "name": "libc-bin",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "e667401af91fad95f15b3ebd25d1abd8373fd18b00dc32219678413170544e84",
+              "size": 609144,
+              "source": {
+                "name": "glibc",
+                "version": "2.36-9+deb12u14"
+              },
+              "version": "2.36-9+deb12u14"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libgcc-s1"
+              ],
+              "filename": "pool/main/g/glibc/libc6_2.36-9+deb12u14_amd64.deb",
+              "name": "libc6",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "ba4f88f73dbc3ae9055f3c20f4523bfdbaf1ad13ff95e258924f77d20b4fbedf",
+              "size": 2759320,
+              "source": {
+                "name": "glibc",
+                "version": "2.36-9+deb12u14"
+              },
+              "version": "2.36-9+deb12u14"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libc/libcap-ng/libcap-ng0_0.8.3-1+b3_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "GPL-3",
+                "LGPL-2.1+"
+              ],
+              "name": "libcap-ng0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "b4b54769c77e4a71c8b33aee4d600ba28a9994a1c6f60d55d4ebe7fc44882e07",
+              "size": 17068,
+              "source": {
+                "name": "libcap-ng",
+                "version": "0.8.3-1"
+              },
+              "version": "0.8.3-1+b3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libc/libcap2/libcap2_2.66-4+deb12u3+b1_amd64.deb",
+              "licenses": [
+                "BSD-3-clause or GPL-2",
+                "BSD-3-clause or GPL-2+"
+              ],
+              "name": "libcap2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "8d684c673e7483802a5c447834b0df6fce006eb3a7109e1be412f5ad425bb24f",
+              "size": 27708,
+              "source": {
+                "name": "libcap2",
+                "version": "1:2.66-4+deb12u3"
+              },
+              "version": "1:2.66-4+deb12u3+b1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/e/e2fsprogs/libcom-err2_1.47.0-2+b2_amd64.deb",
+              "licenses": [
+                "Apache-2",
+                "BSD-3-Clause",
+                "GPL or MIT-US-export",
+                "GPL-2",
+                "GPL-2+ with Texinfo exception",
+                "ISC",
+                "Kazlib",
+                "LGPL-2",
+                "Latex2e"
+              ],
+              "name": "libcom-err2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "a2bac7015e78fbc0c504df3e441f3a22292f1d2d77f9ccda760057f3690e22f2",
+              "size": 20044,
+              "source": {
+                "name": "e2fsprogs",
+                "version": "1.47.0-2"
+              },
+              "version": "1.47.0-2+b2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libx/libxcrypt/libcrypt1_4.4.33-2_amd64.deb",
+              "name": "libcrypt1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "f5f60a5cdfd4e4eaa9438ade5078a57741a7a78d659fcb0c701204f523e8bd29",
+              "size": 89464,
+              "source": {
+                "name": "libxcrypt",
+                "version": "1:4.4.33-2"
+              },
+              "version": "1:4.4.33-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/d/db5.3/libdb5.3_5.3.28+dfsg2-1_amd64.deb",
+              "licenses": [
+                "Artistic or BSD-3-clause",
+                "BSD-3-clause",
+                "BSD-3-clause-fjord",
+                "GPL",
+                "GPL or Artistic",
+                "GPL-3",
+                "MIT-old",
+                "Ms-PL",
+                "Sleepycat and BSD-3-clause",
+                "TCL-like",
+                "X11",
+                "zlib"
+              ],
+              "name": "libdb5.3",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "7dc5127b8dd0da80e992ba594954c005ae4359d839a24eb65d0d8129b5235c84",
+              "size": 697412,
+              "source": {
+                "name": "db5.3",
+                "version": "5.3.28+dfsg2-1"
+              },
+              "version": "5.3.28+dfsg2-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/c/cdebconf/libdebconfclient0_0.270_amd64.deb",
+              "licenses": [
+                "BSD-2-Clause",
+                "GPL-2+"
+              ],
+              "name": "libdebconfclient0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "7d2b2b700bae0ba67a13655fabba6a98da3f6ce7dee43d1ee0ac433b7ca1d947",
+              "size": 9900,
+              "source": {
+                "name": "cdebconf",
+                "version": "0.270"
+              },
+              "version": "0.270"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/updates/main/e/expat/libexpat1_2.5.0-1+deb12u5_amd64.deb",
+              "licenses": [
+                "MIT"
+              ],
+              "name": "libexpat1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "cae5ded666d8573dd33060bc66fbac21eea8b101a6b56e2af8bd590fcfa65d79",
+              "size": 107940,
+              "source": {
+                "name": "expat",
+                "version": "2.5.0-1+deb12u5"
+              },
+              "version": "2.5.0-1+deb12u5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/e/e2fsprogs/libext2fs2_1.47.0-2+b2_amd64.deb",
+              "licenses": [
+                "Apache-2",
+                "BSD-3-Clause",
+                "GPL or MIT-US-export",
+                "GPL-2",
+                "GPL-2+ with Texinfo exception",
+                "ISC",
+                "Kazlib",
+                "LGPL-2",
+                "Latex2e"
+              ],
+              "name": "libext2fs2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "dff731f2318df99da4b8bf5f330f415f95b94c609bac29e7b2edba0a38f22a98",
+              "size": 204900,
+              "source": {
+                "name": "e2fsprogs",
+                "version": "1.47.0-2"
+              },
+              "version": "1.47.0-2+b2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libf/libffi/libffi8_3.4.4-1_amd64.deb",
+              "licenses": [
+                "Expat",
+                "GPL",
+                "GPL-2+",
+                "GPL-3+",
+                "MPL-1.1 or GPL-2+ or LGPL-2.1+",
+                "X11",
+                "public-domain"
+              ],
+              "name": "libffi8",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "6d9f6c25c30efccce6d4bceaa48ea86c329a3432abb360a141f76ac223a4c34a",
+              "size": 22856,
+              "source": {
+                "name": "libffi",
+                "version": "3.4.4-1"
+              },
+              "version": "3.4.4-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "gcc-12-base",
+                "libc6"
+              ],
+              "filename": "pool/main/g/gcc-12/libgcc-s1_12.2.0-14+deb12u1_amd64.deb",
+              "name": "libgcc-s1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "3016e62cb4b7cd8038822870601f5ed131befe942774d0f745622cc77d8a88f7",
+              "size": 49856,
+              "source": {
+                "name": "gcc-12",
+                "version": "12.2.0-14+deb12u1"
+              },
+              "version": "12.2.0-14+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libgpg-error0"
+              ],
+              "filename": "pool/main/libg/libgcrypt20/libgcrypt20_1.10.1-3+deb12u1_amd64.deb",
+              "name": "libgcrypt20",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "e7a56552139c693904a6f9712234c05fe918353273a7cbdb5e62f423ad71bb97",
+              "size": 696204,
+              "version": "1.10.1-3+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/g/gmp/libgmp10_6.2.1+dfsg1-1.1_amd64.deb",
+              "licenses": [
+                "GPL-2+ or LGPL-3+",
+                "GPL-3+",
+                "GPL-3+ with Bison exception"
+              ],
+              "name": "libgmp10",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "187aedef2ed763f425c1e523753b9719677633c7eede660401739e9c893482bd",
+              "size": 562588,
+              "source": {
+                "name": "gmp",
+                "version": "2:6.2.1+dfsg1-1.1"
+              },
+              "version": "2:6.2.1+dfsg1-1.1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libgmp10",
+                "libhogweed6",
+                "libidn2-0",
+                "libnettle8",
+                "libp11-kit0",
+                "libtasn1-6",
+                "libunistring2"
+              ],
+              "filename": "pool/main/g/gnutls28/libgnutls30_3.7.9-2+deb12u7_amd64.deb",
+              "name": "libgnutls30",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "30abec8c824feb1d2d7e9000a34083cccd19d139625e1b21547e3ac53b922f8e",
+              "size": 1409084,
+              "source": {
+                "name": "gnutls28",
+                "version": "3.7.9-2+deb12u7"
+              },
+              "version": "3.7.9-2+deb12u7"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libg/libgpg-error/libgpg-error0_1.46-1_amd64.deb",
+              "licenses": [
+                "GPL-3+",
+                "LGPL-2.1+",
+                "LGPL-2.1+ or BSD-3-clause",
+                "g10-permissive"
+              ],
+              "name": "libgpg-error0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "89944ee11d7370ce6ef46fc52f094c4a6512eff8943ec4c6ebefeae6360ceada",
+              "size": 76888,
+              "source": {
+                "name": "libgpg-error",
+                "version": "1.46-1"
+              },
+              "version": "1.46-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libcom-err2",
+                "libk5crypto3",
+                "libkrb5-3",
+                "libkrb5support0"
+              ],
+              "filename": "pool/main/k/krb5/libgssapi-krb5-2_1.20.1-2+deb12u5_amd64.deb",
+              "name": "libgssapi-krb5-2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "d8b87aea91b956b416c01a28c44ff6228315ae3b73de40acddac3dc5043607d2",
+              "size": 135168,
+              "source": {
+                "name": "krb5",
+                "version": "1.20.1-2+deb12u5"
+              },
+              "version": "1.20.1-2+deb12u5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libgmp10",
+                "libnettle8"
+              ],
+              "filename": "pool/main/n/nettle/libhogweed6_3.8.1-2_amd64.deb",
+              "licenses": [
+                "Expat",
+                "GAP",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "GPL-3+ with Autoconf exception",
+                "LGPL-2+",
+                "LGPL-3+ or GPL-2+",
+                "public-domain"
+              ],
+              "name": "libhogweed6",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "ed8185c28b2cb519744a5a462dcd720d3b332c9b88a1d0002eac06dc8550cb94",
+              "size": 327524,
+              "source": {
+                "name": "nettle",
+                "version": "3.8.1-2"
+              },
+              "version": "3.8.1-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libunistring2"
+              ],
+              "filename": "pool/main/libi/libidn2/libidn2-0_2.3.3-1+b1_amd64.deb",
+              "licenses": [
+                "GPL-3+",
+                "LGPL-3+ or GPL-2+",
+                "Unicode"
+              ],
+              "name": "libidn2-0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "d50716d5824083d667427817d506b45d3f59dc77e1ca52de000f3f62d4918afa",
+              "size": 123636,
+              "source": {
+                "name": "libidn2",
+                "version": "2.3.3-1"
+              },
+              "version": "2.3.3-1+b1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libonig5"
+              ],
+              "filename": "pool/updates/main/j/jq/libjq1_1.6-2.1+deb12u3_amd64.deb",
+              "licenses": [
+                "CC-BY-3.0",
+                "Expat",
+                "GPL-2.0+",
+                "MIT"
+              ],
+              "name": "libjq1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "5e9a7081ba10ce826f6d3d103aa9b912170c5adc836e2561000733571995dd5b",
+              "size": 136460,
+              "source": {
+                "name": "jq",
+                "version": "1.6-2.1+deb12u3"
+              },
+              "version": "1.6-2.1+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libkrb5support0"
+              ],
+              "filename": "pool/main/k/krb5/libk5crypto3_1.20.1-2+deb12u5_amd64.deb",
+              "name": "libk5crypto3",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "7b6e47d15c5c9cdcd456137533d8308aeba608a54cec73b28bd59bfc4b54cf06",
+              "size": 79712,
+              "source": {
+                "name": "krb5",
+                "version": "1.20.1-2+deb12u5"
+              },
+              "version": "1.20.1-2+deb12u5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/k/keyutils/libkeyutils1_1.6.3-2_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "LGPL-2+"
+              ],
+              "name": "libkeyutils1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "cfac89e6a7a54ff3c6a4f843310e25efeddaa771baeae470bd98bd588c373563",
+              "size": 8808,
+              "source": {
+                "name": "keyutils",
+                "version": "1.6.3-2"
+              },
+              "version": "1.6.3-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libcom-err2",
+                "libk5crypto3",
+                "libkeyutils1",
+                "libkrb5support0",
+                "libssl3"
+              ],
+              "filename": "pool/main/k/krb5/libkrb5-3_1.20.1-2+deb12u5_amd64.deb",
+              "name": "libkrb5-3",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "c90801be09701af221b54dd502a59cb378b7284ff31e480738baca317d2f7653",
+              "size": 332280,
+              "source": {
+                "name": "krb5",
+                "version": "1.20.1-2+deb12u5"
+              },
+              "version": "1.20.1-2+deb12u5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/k/krb5/libkrb5support0_1.20.1-2+deb12u5_amd64.deb",
+              "name": "libkrb5support0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "8b9c05f2d8d461a10d657b118f572af5bf8fd6c8f93dcef81e852c5ab0f428ab",
+              "size": 33212,
+              "source": {
+                "name": "krb5",
+                "version": "1.20.1-2+deb12u5"
+              },
+              "version": "1.20.1-2+deb12u5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/l/lz4/liblz4-1_1.9.4-1_amd64.deb",
+              "licenses": [
+                "BSD-2-clause",
+                "GPL-2+",
+                "GPL-2+ or BSD-2-clause"
+              ],
+              "name": "liblz4-1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "64cde86cef1deaf828bd60297839b59710b5cd8dc50efd4f12643caaee9389d3",
+              "size": 62884,
+              "source": {
+                "name": "lz4",
+                "version": "1.9.4-1"
+              },
+              "version": "1.9.4-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/updates/main/x/xz-utils/liblzma5_5.4.1-1+deb12u2_amd64.deb",
+              "licenses": [
+                "Autoconf",
+                "GPL-2",
+                "GPL-2+",
+                "LGPL-2.1+",
+                "PD",
+                "PD-debian",
+                "config-h",
+                "noderivs",
+                "none",
+                "permissive-fsf",
+                "permissive-nowarranty",
+                "probably-PD"
+              ],
+              "name": "liblzma5",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "3d8c29c8c21ec6007635e1b2591edf98b771c9572a085968f47452b33040f384",
+              "size": 205796,
+              "source": {
+                "name": "xz-utils",
+                "version": "5.4.1-1+deb12u2"
+              },
+              "version": "5.4.1-1+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libm/libmd/libmd0_1.0.4-2_amd64.deb",
+              "licenses": [
+                "BSD-2-clause",
+                "BSD-2-clause-NetBSD",
+                "BSD-3-clause",
+                "BSD-3-clause-Aaron-D-Gifford",
+                "Beerware",
+                "ISC",
+                "public-domain-md4",
+                "public-domain-md5",
+                "public-domain-sha1"
+              ],
+              "name": "libmd0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "03539fd30c509e27101d13a56e52eda9062bdf1aefe337c07ab56def25a13eab",
+              "size": 29456,
+              "source": {
+                "name": "libmd",
+                "version": "1.0.4-2"
+              },
+              "version": "1.0.4-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libblkid1",
+                "libc6",
+                "libselinux1"
+              ],
+              "filename": "pool/main/u/util-linux/libmount1_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "libmount1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "f46e2d6b006951825adde9757790b6609d7c66c7700f9b68f3db913eaac323c3",
+              "size": 165732,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libtinfo6"
+              ],
+              "filename": "pool/main/n/ncurses/libncursesw6_6.4-4_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "MIT/X11",
+                "X11"
+              ],
+              "name": "libncursesw6",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "98fa7a53dc565a38b65fb70422ad08001bf5361d8fbc74255280c329996a6bec",
+              "size": 133824,
+              "source": {
+                "name": "ncurses",
+                "version": "6.4-4"
+              },
+              "version": "6.4-4"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/n/nettle/libnettle8_3.8.1-2_amd64.deb",
+              "licenses": [
+                "Expat",
+                "GAP",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "GPL-3+ with Autoconf exception",
+                "LGPL-2+",
+                "LGPL-3+ or GPL-2+",
+                "public-domain"
+              ],
+              "name": "libnettle8",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "45922e6e289ffd92f0f92d2bb9159e84236ff202d552a461bf10e5335b3f0261",
+              "size": 287764,
+              "source": {
+                "name": "nettle",
+                "version": "3.8.1-2"
+              },
+              "version": "3.8.1-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libtirpc3"
+              ],
+              "filename": "pool/main/libn/libnsl/libnsl2_1.3.0-2_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "GPL-2+-autoconf-exception",
+                "GPL-2+-libtool-exception",
+                "GPL-3+-autoconf-exception",
+                "LGPL-2.1",
+                "LGPL-2.1+",
+                "MIT",
+                "permissive-autoconf-m4",
+                "permissive-autoconf-m4-no-warranty",
+                "permissive-configure",
+                "permissive-fsf",
+                "permissive-makefile-in"
+              ],
+              "name": "libnsl2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "c0d83437fdb016cb289436f49f28a36be44b3e8f1f2498c7e3a095f709c0d6f8",
+              "size": 39480,
+              "source": {
+                "name": "libnsl",
+                "version": "1.3.0-2"
+              },
+              "version": "1.3.0-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libo/libonig/libonig5_6.9.8-1_amd64.deb",
+              "licenses": [
+                "BSD-2-clause",
+                "GPL-2+"
+              ],
+              "name": "libonig5",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "59ecfce6d88c7c4b09496ce182b3b8303e8e8477664e009b16ae83a09cd12be7",
+              "size": 187828,
+              "source": {
+                "name": "libonig",
+                "version": "6.9.8-1"
+              },
+              "version": "6.9.8-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libffi8"
+              ],
+              "filename": "pool/main/p/p11-kit/libp11-kit0_0.24.1-2_amd64.deb",
+              "licenses": [
+                "Apache-2.0",
+                "BSD-3-Clause",
+                "ISC",
+                "ISC+IBM",
+                "LGPL-2.1+",
+                "permissive-like-automake-output",
+                "same-as-rest-of-p11kit"
+              ],
+              "name": "libp11-kit0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "251330faddbf013f060fcdb41f4b0c037c8a6e89ba7c09b04bfcc4e3f0807b22",
+              "size": 345080,
+              "source": {
+                "name": "p11-kit",
+                "version": "0.24.1-2"
+              },
+              "version": "0.24.1-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "debconf",
+                "libaudit1",
+                "libc6",
+                "libcrypt1",
+                "libdb5.3",
+                "libpam-modules-bin",
+                "libpam0g",
+                "libselinux1"
+              ],
+              "filename": "pool/main/p/pam/libpam-modules_1.5.2-6+deb12u2_amd64.deb",
+              "licenses": [
+                "BSD-3-clause or GPL",
+                "BSD-tcp_wrappers",
+                "Beerware",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3",
+                "GPL-3+ with Bison exception",
+                "LGPL-2+",
+                "public-domain"
+              ],
+              "name": "libpam-modules",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "19fb4838168e68bc15a5606070f14b1162bb34a3899686913f5d661f1707f483",
+              "size": 291056,
+              "source": {
+                "name": "pam",
+                "version": "1.5.2-6+deb12u2"
+              },
+              "version": "1.5.2-6+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libaudit1",
+                "libc6",
+                "libcrypt1",
+                "libpam0g",
+                "libselinux1"
+              ],
+              "filename": "pool/main/p/pam/libpam-modules-bin_1.5.2-6+deb12u2_amd64.deb",
+              "licenses": [
+                "BSD-3-clause or GPL",
+                "BSD-tcp_wrappers",
+                "Beerware",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3",
+                "GPL-3+ with Bison exception",
+                "LGPL-2+",
+                "public-domain"
+              ],
+              "name": "libpam-modules-bin",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "e7b1f6c60a51398920c5da792016161a65bf1c7caaa64140dd2099176ed51280",
+              "size": 75676,
+              "source": {
+                "name": "pam",
+                "version": "1.5.2-6+deb12u2"
+              },
+              "version": "1.5.2-6+deb12u2"
+            },
+            {
+              "arch": "all",
+              "dependencies": [
+                "debconf",
+                "libpam-modules"
+              ],
+              "filename": "pool/main/p/pam/libpam-runtime_1.5.2-6+deb12u2_all.deb",
+              "licenses": [
+                "BSD-3-clause or GPL",
+                "BSD-tcp_wrappers",
+                "Beerware",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3",
+                "GPL-3+ with Bison exception",
+                "LGPL-2+",
+                "public-domain"
+              ],
+              "name": "libpam-runtime",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "7a4f26d54c1e3ee8c68095f9d9013d13dd89a33ff78ef87330d21f21235fc278",
+              "size": 160936,
+              "source": {
+                "name": "pam",
+                "version": "1.5.2-6+deb12u2"
+              },
+              "version": "1.5.2-6+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "debconf",
+                "libaudit1",
+                "libc6"
+              ],
+              "filename": "pool/main/p/pam/libpam0g_1.5.2-6+deb12u2_amd64.deb",
+              "licenses": [
+                "BSD-3-clause or GPL",
+                "BSD-tcp_wrappers",
+                "Beerware",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3",
+                "GPL-3+ with Bison exception",
+                "LGPL-2+",
+                "public-domain"
+              ],
+              "name": "libpam0g",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "a06f889caf9e97ccf04dedec0905573916bc6ec3366ade2c6ef8900047fd5cc1",
+              "size": 92060,
+              "source": {
+                "name": "pam",
+                "version": "1.5.2-6+deb12u2"
+              },
+              "version": "1.5.2-6+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/updates/main/p/pcre2/libpcre2-8-0_10.42-1+deb12u2_amd64.deb",
+              "licenses": [
+                "BSD-2-clause",
+                "BSD-3-clause",
+                "BSD-3-clause-Cambridge with BINARY LIBRARY-LIKE PACKAGES exception",
+                "X11",
+                "public-domain"
+              ],
+              "name": "libpcre2-8-0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "d2f7edfcc7689b9e0761c2742cc824ac86a20768bc5e8057818dc6875291fe76",
+              "size": 261628,
+              "source": {
+                "name": "pcre2",
+                "version": "10.42-1+deb12u2"
+              },
+              "version": "10.42-1+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libpython3.11-stdlib"
+              ],
+              "filename": "pool/main/p/python3-defaults/libpython3-stdlib_3.11.2-1+b1_amd64.deb",
+              "name": "libpython3-stdlib",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "4e58891d5c951a1e360ed9eaa814413cb5e84deadce3f08e801ac680434c786e",
+              "size": 9312,
+              "source": {
+                "name": "python3-defaults",
+                "version": "3.11.2-1"
+              },
+              "version": "3.11.2-1+b1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libssl3"
+              ],
+              "filename": "pool/updates/main/p/python3.11/libpython3.11-minimal_3.11.2-6+deb12u9_amd64.deb",
+              "name": "libpython3.11-minimal",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "69f41cfa3f4ba17284e538f843069d7529c53c207d2ae17a5b02785944870e33",
+              "size": 820928,
+              "source": {
+                "name": "python3.11",
+                "version": "3.11.2-6+deb12u9"
+              },
+              "version": "3.11.2-6+deb12u9"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libbz2-1.0",
+                "libc6",
+                "libcrypt1",
+                "libdb5.3",
+                "libffi8",
+                "liblzma5",
+                "libncursesw6",
+                "libnsl2",
+                "libpython3.11-minimal",
+                "libreadline8",
+                "libsqlite3-0",
+                "libtinfo6",
+                "libtirpc3",
+                "libuuid1",
+                "media-types"
+              ],
+              "filename": "pool/updates/main/p/python3.11/libpython3.11-stdlib_3.11.2-6+deb12u9_amd64.deb",
+              "name": "libpython3.11-stdlib",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "10f13e000ee757f5f2d2d3569f9e30546214a0c850acd78695feae373bfa3e53",
+              "size": 1798408,
+              "source": {
+                "name": "python3.11",
+                "version": "3.11.2-6+deb12u9"
+              },
+              "version": "3.11.2-6+deb12u9"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libtinfo6",
+                "readline-common"
+              ],
+              "filename": "pool/main/r/readline/libreadline8_8.2-1.3_amd64.deb",
+              "licenses": [
+                "GFDL-NIV-1.3+",
+                "GPL-2+",
+                "GPL-3",
+                "GPL-3+",
+                "ISC-no-attribution"
+              ],
+              "name": "libreadline8",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "e02ebbd3701cf468dbf98d6d917fbe0325e881f07fe8b316150c8d2a64486e66",
+              "size": 165760,
+              "source": {
+                "name": "readline",
+                "version": "8.2-1.3"
+              },
+              "version": "8.2-1.3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libs/libseccomp/libseccomp2_2.5.4-1+deb12u1_amd64.deb",
+              "licenses": [
+                "LGPL-2.1"
+              ],
+              "name": "libseccomp2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "108fe67957ca7cf9ba51d801118a1b37d404bea7b6e365025cd00779e9eca38d",
+              "size": 46808,
+              "source": {
+                "name": "libseccomp",
+                "version": "2.5.4-1+deb12u1"
+              },
+              "version": "2.5.4-1+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libpcre2-8-0"
+              ],
+              "filename": "pool/main/libs/libselinux/libselinux1_3.4-1+b6_amd64.deb",
+              "name": "libselinux1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "2b07f5287b9105f40158b56e4d70cc1652dac56a408f3507b4ab3d061eed425f",
+              "size": 73720,
+              "source": {
+                "name": "libselinux",
+                "version": "3.4-1"
+              },
+              "version": "3.4-1+b6"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/libs/libsemanage/libsemanage-common_3.4-1_all.deb",
+              "name": "libsemanage-common",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "835f806c21ae25e39053bd3057051640341b0cf08e1db9746fd82e370d82fa30",
+              "size": 21632,
+              "source": {
+                "name": "libsemanage",
+                "version": "3.4-1"
+              },
+              "version": "3.4-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libaudit1",
+                "libbz2-1.0",
+                "libc6",
+                "libselinux1",
+                "libsemanage-common",
+                "libsepol2"
+              ],
+              "filename": "pool/main/libs/libsemanage/libsemanage2_3.4-1+b5_amd64.deb",
+              "name": "libsemanage2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "fd36d0972866adde5a52269a309fcecd76a8e45e557dd0ecd33aa221cabc2a8c",
+              "size": 89884,
+              "source": {
+                "name": "libsemanage",
+                "version": "3.4-1"
+              },
+              "version": "3.4-1+b5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libs/libsepol/libsepol2_3.4-2.1_amd64.deb",
+              "licenses": [
+                "GPL-2",
+                "GPL-2+",
+                "LGPL-2.1+",
+                "Zlib"
+              ],
+              "name": "libsepol2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "b998946bb9818a97b387a962826caae33bc7fdcb6d706b2782c0470510be6b48",
+              "size": 275900,
+              "source": {
+                "name": "libsepol",
+                "version": "3.4-2.1"
+              },
+              "version": "3.4-2.1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/u/util-linux/libsmartcols1_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "libsmartcols1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "84088c6895fc07538fc51624899f3f71835188e0d38ebc3812097ac13da523b0",
+              "size": 106776,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/s/sqlite3/libsqlite3-0_3.40.1-2+deb12u2_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "public-domain"
+              ],
+              "name": "libsqlite3-0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "a8d78b40e9b4e422224aeebfe0e4dfc243f6acf3532490b0c05480d4283d41e2",
+              "size": 838808,
+              "source": {
+                "name": "sqlite3",
+                "version": "3.40.1-2+deb12u2"
+              },
+              "version": "3.40.1-2+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libcom-err2"
+              ],
+              "filename": "pool/main/e/e2fsprogs/libss2_1.47.0-2+b2_amd64.deb",
+              "licenses": [
+                "Apache-2",
+                "BSD-3-Clause",
+                "GPL or MIT-US-export",
+                "GPL-2",
+                "GPL-2+ with Texinfo exception",
+                "ISC",
+                "Kazlib",
+                "LGPL-2",
+                "Latex2e"
+              ],
+              "name": "libss2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "24115749c09b4e259acff1f799faccd1748ff322bd638b09d820729cb3b24579",
+              "size": 24800,
+              "source": {
+                "name": "e2fsprogs",
+                "version": "1.47.0-2"
+              },
+              "version": "1.47.0-2+b2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/updates/main/o/openssl/libssl3_3.0.22-1~deb12u2_amd64.deb",
+              "licenses": [
+                "Apache-2.0",
+                "Artistic or GPL-1+"
+              ],
+              "name": "libssl3",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "cb4784740daa9b3b0eaea2b444bbefa686794afbbf3d678d238c1fd9875f2efd",
+              "size": 2039888,
+              "source": {
+                "name": "openssl",
+                "version": "3.0.22-1~deb12u2"
+              },
+              "version": "3.0.22-1~deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "gcc-12-base",
+                "libc6",
+                "libgcc-s1"
+              ],
+              "filename": "pool/main/g/gcc-12/libstdc++6_12.2.0-14+deb12u1_amd64.deb",
+              "name": "libstdc++6",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "5cd3171216d4ab0fc911cfe9c35509bf2dd8f47761c43b7f6a4296701551a24d",
+              "size": 612604,
+              "source": {
+                "name": "gcc-12",
+                "version": "12.2.0-14+deb12u1"
+              },
+              "version": "12.2.0-14+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libcap2",
+                "libgcrypt20",
+                "liblz4-1",
+                "liblzma5",
+                "libzstd1"
+              ],
+              "filename": "pool/main/s/systemd/libsystemd0_252.39-1~deb12u2_amd64.deb",
+              "licenses": [
+                "CC0-1.0",
+                "Expat",
+                "GPL-2 with Linux-syscall-note exception",
+                "GPL-2+",
+                "LGPL-2.1+",
+                "public-domain"
+              ],
+              "name": "libsystemd0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "013c07514a9e4933b2d5c098018695a6aa42d085dbc483ce2c094a954c8a1b0a",
+              "size": 332372,
+              "source": {
+                "name": "systemd",
+                "version": "252.39-1~deb12u2"
+              },
+              "version": "252.39-1~deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libt/libtasn1-6/libtasn1-6_4.19.0-2+deb12u1_amd64.deb",
+              "name": "libtasn1-6",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main",
+                "Debian:oldstable/main"
+              ],
+              "sha256": "2c27c613b69be248d09432839ea3d3382f6ee27fabaa65987aa2d884cd00afda",
+              "size": 48596,
+              "version": "4.19.0-2+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/n/ncurses/libtinfo6_6.4-4_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "MIT/X11",
+                "X11"
+              ],
+              "name": "libtinfo6",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "072d908f38f51090ca28ca5afa3b46b2957dc61fe35094c0b851426859a49a51",
+              "size": 331352,
+              "source": {
+                "name": "ncurses",
+                "version": "6.4-4"
+              },
+              "version": "6.4-4"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/libt/libtirpc/libtirpc-common_1.3.3+ds-1_all.deb",
+              "licenses": [
+                "BSD-2-Clause",
+                "BSD-3-Clause",
+                "BSD-4-Clause",
+                "GPL-2",
+                "LGPL-2.1+",
+                "PERMISSIVE",
+                "__AUTO_PERMISSIVE__"
+              ],
+              "name": "libtirpc-common",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "3e3ef129b4bf61513144236e15e1b4ec57fa5ae3dc8a72137abdbefb7a63af85",
+              "size": 14048,
+              "source": {
+                "name": "libtirpc",
+                "version": "1.3.3+ds-1"
+              },
+              "version": "1.3.3+ds-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libgssapi-krb5-2",
+                "libtirpc-common"
+              ],
+              "filename": "pool/main/libt/libtirpc/libtirpc3_1.3.3+ds-1_amd64.deb",
+              "licenses": [
+                "BSD-2-Clause",
+                "BSD-3-Clause",
+                "BSD-4-Clause",
+                "GPL-2",
+                "LGPL-2.1+",
+                "PERMISSIVE",
+                "__AUTO_PERMISSIVE__"
+              ],
+              "name": "libtirpc3",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "2a46d5a5e9486da11ffeff5740931740d6deae4f92cd6098df060dc5dff1e1c7",
+              "size": 85192,
+              "source": {
+                "name": "libtirpc",
+                "version": "1.3.3+ds-1"
+              },
+              "version": "1.3.3+ds-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/s/systemd/libudev1_252.39-1~deb12u2_amd64.deb",
+              "licenses": [
+                "CC0-1.0",
+                "Expat",
+                "GPL-2 with Linux-syscall-note exception",
+                "GPL-2+",
+                "LGPL-2.1+",
+                "public-domain"
+              ],
+              "name": "libudev1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "6f7e08f11c4809d2e5998c775f7b423ab5ec2ce0309494b4a2615037052245e2",
+              "size": 108880,
+              "source": {
+                "name": "systemd",
+                "version": "252.39-1~deb12u2"
+              },
+              "version": "252.39-1~deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libu/libunistring/libunistring2_1.0-2_amd64.deb",
+              "licenses": [
+                "FreeSoftware",
+                "GPL-2+",
+                "GPL-2+ with distribution exception",
+                "GPL-3+",
+                "GPL-3+ or GFDL-1.2+",
+                "LGPL-3+ or GPL-2+",
+                "MIT"
+              ],
+              "name": "libunistring2",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "d466bbfe011d764d793c1d9d777cad9c7cf65b938e11598f27408171ad95a951",
+              "size": 436708,
+              "source": {
+                "name": "libunistring",
+                "version": "1.0-2"
+              },
+              "version": "1.0-2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/u/util-linux/libuuid1_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "libuuid1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "5fff398321da62d28a842bcbabd193d72ae21724962c029dc32b1dc6b2deaeaf",
+              "size": 28784,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/x/xxhash/libxxhash0_0.8.1-1_amd64.deb",
+              "licenses": [
+                "BSD-2-clause",
+                "GPL-2"
+              ],
+              "name": "libxxhash0",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "6c19a5d18c8350744581fbd25d5d29e2b7101053e25aafa4e1ffcc2b505b2f1c",
+              "size": 27584,
+              "source": {
+                "name": "xxhash",
+                "version": "0.8.1-1"
+              },
+              "version": "0.8.1-1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/libz/libzstd/libzstd1_1.5.4+dfsg2-5_amd64.deb",
+              "licenses": [
+                "BSD-3-clause or GPL-2",
+                "Expat",
+                "zlib"
+              ],
+              "name": "libzstd1",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "6315b5ac38b724a710fb96bf1042019398cb656718b1522279a5185ed39318fa",
+              "size": 290036,
+              "source": {
+                "name": "libzstd",
+                "version": "1.5.4+dfsg2-5"
+              },
+              "version": "1.5.4+dfsg2-5"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libaudit1",
+                "libc6",
+                "libcrypt1",
+                "libpam-modules",
+                "libpam-runtime",
+                "libpam0g"
+              ],
+              "essential": true,
+              "filename": "pool/main/s/shadow/login_4.13+dfsg1-1+deb12u2_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "GPL-1",
+                "GPL-2+",
+                "public-domain"
+              ],
+              "name": "login",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "f1cc45bf505a8457340dc3c36f3a01a1835aaf564d73d9d394afb8ccfb6595a0",
+              "size": 616084,
+              "source": {
+                "name": "shadow",
+                "version": "1:4.13+dfsg1-1+deb12u2"
+              },
+              "version": "1:4.13+dfsg1-1+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/e/e2fsprogs/logsave_1.47.0-2+b2_amd64.deb",
+              "licenses": [
+                "Apache-2",
+                "BSD-3-Clause",
+                "GPL or MIT-US-export",
+                "GPL-2",
+                "GPL-2+ with Texinfo exception",
+                "ISC",
+                "Kazlib",
+                "LGPL-2",
+                "Latex2e"
+              ],
+              "name": "logsave",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "12e051fb0d931c510d464ba93e87b937aa41a08f286735e0538d9f9e73efa3d0",
+              "size": 19876,
+              "source": {
+                "name": "e2fsprogs",
+                "version": "1.47.0-2"
+              },
+              "version": "1.47.0-2+b2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/m/mawk/mawk_1.3.4.20200120-3.1_amd64.deb",
+              "licenses": [
+                "CC-BY-3.0",
+                "GPL-2",
+                "X11"
+              ],
+              "name": "mawk",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "bcbc83f391854ea9d50ce2a4101aacf330de3b8b71d81a798faadba14a157f78",
+              "size": 119144,
+              "version": "1.3.4.20200120-3.1"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/m/media-types/media-types_10.0.0_all.deb",
+              "licenses": [
+                "ad-hoc"
+              ],
+              "name": "media-types",
+              "priority": "standard",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "aaa46dcb3b39948ae2e0fdb72cfcb2f48c0b59f19785a3da8045c05eb19955dd",
+              "size": 26136,
+              "version": "10.0.0"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libblkid1",
+                "libc6",
+                "libmount1",
+                "libselinux1",
+                "libsmartcols1"
+              ],
+              "filename": "pool/main/u/util-linux/mount_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "mount",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "456ed2c62f884bc1133b6969d4d1eb2e6d8581076b00b4c8d700151155270a7a",
+              "size": 134044,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "all",
+              "essential": true,
+              "filename": "pool/main/n/ncurses/ncurses-base_6.4-4_all.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "MIT/X11",
+                "X11"
+              ],
+              "name": "ncurses-base",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "bfd1d89f833c09a28b062ee916495cf69649ca2bf529532476c7b69d75d24909",
+              "size": 261308,
+              "source": {
+                "name": "ncurses",
+                "version": "6.4-4"
+              },
+              "version": "6.4-4"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libtinfo6"
+              ],
+              "essential": true,
+              "filename": "pool/main/n/ncurses/ncurses-bin_6.4-4_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "MIT/X11",
+                "X11"
+              ],
+              "name": "ncurses-bin",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "396d6e453aee6d71b7141f0bfb333a6c08a44c64f77632bdf52894ccd123db46",
+              "size": 421400,
+              "source": {
+                "name": "ncurses",
+                "version": "6.4-4"
+              },
+              "version": "6.4-4"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libaudit1",
+                "libc6",
+                "libcrypt1",
+                "libpam-modules",
+                "libpam0g",
+                "libselinux1",
+                "libsemanage2"
+              ],
+              "filename": "pool/main/s/shadow/passwd_4.13+dfsg1-1+deb12u2_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "GPL-1",
+                "GPL-2+",
+                "public-domain"
+              ],
+              "name": "passwd",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "fb787363372903e03627e53fd483e51dfb6861047a1e02c7d5a5f27d66546d08",
+              "size": 972180,
+              "source": {
+                "name": "shadow",
+                "version": "1:4.13+dfsg1-1+deb12u2"
+              },
+              "version": "1:4.13+dfsg1-1+deb12u2"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "dpkg",
+                "libc6",
+                "libcrypt1"
+              ],
+              "essential": true,
+              "filename": "pool/updates/main/p/perl/perl-base_5.36.0-7+deb12u4_amd64.deb",
+              "licenses": [
+                "Artistic",
+                "Artistic or GPL-1+ or Artistic-dist",
+                "Artistic-dist",
+                "BSD-3-clause",
+                "BSD-3-clause-with-weird-numbering",
+                "BZIP",
+                "CC0-1.0",
+                "DONT-CHANGE-THE-GPL",
+                "Expat",
+                "Expat or GPL-1+ or Artistic",
+                "GPL-1+ or Artistic",
+                "GPL-1+ or Artistic or Artistic-dist",
+                "GPL-1+ or Artistic, and BSD-3-clause-GENERIC",
+                "GPL-1+ or Artistic, and BSD-4-clause-POWERDOG",
+                "GPL-1+ or Artistic, and Expat",
+                "GPL-1+ or Artistic, and Unicode",
+                "GPL-2+ or Artistic",
+                "GPL-3+-WITH-BISON-EXCEPTION",
+                "REGCOMP, and GPL-1+ or Artistic",
+                "RRA-KEEP-THIS-NOTICE",
+                "SDBM-PUBLIC-DOMAIN",
+                "TEXT-TABS",
+                "Unicode",
+                "ZLIB"
+              ],
+              "name": "perl-base",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "d7d1943aec9597629bf73075efcc5ef6dc9bda96d78e80d843156ecd448478b8",
+              "size": 1609596,
+              "source": {
+                "name": "perl",
+                "version": "5.36.0-7+deb12u4"
+              },
+              "version": "5.36.0-7+deb12u4"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libpython3-stdlib",
+                "python3-minimal",
+                "python3.11"
+              ],
+              "filename": "pool/main/p/python3-defaults/python3_3.11.2-1+b1_amd64.deb",
+              "name": "python3",
+              "priority": "optional",
+              "reason": "manual",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "33f6dafbd1a6902d9063172ec7dbd4b2225e12009e0d7ec5c933a72c2f5f3b74",
+              "size": 26300,
+              "source": {
+                "name": "python3-defaults",
+                "version": "3.11.2-1"
+              },
+              "version": "3.11.2-1+b1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "dpkg",
+                "python3.11-minimal"
+              ],
+              "filename": "pool/main/p/python3-defaults/python3-minimal_3.11.2-1+b1_amd64.deb",
+              "name": "python3-minimal",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "30f9618670e686d781afbfc713eb0830c29d2819e9cb2a0488800dad6bb99faa",
+              "size": 26312,
+              "source": {
+                "name": "python3-defaults",
+                "version": "3.11.2-1"
+              },
+              "version": "3.11.2-1+b1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libpython3.11-stdlib",
+                "media-types",
+                "python3.11-minimal"
+              ],
+              "filename": "pool/updates/main/p/python3.11/python3.11_3.11.2-6+deb12u9_amd64.deb",
+              "name": "python3.11",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "4facf334e0e0830a87013852f8c3a1cfee11ad702f72f240adf9ad5b9a334e7c",
+              "size": 575032,
+              "version": "3.11.2-6+deb12u9"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6",
+                "libexpat1",
+                "libpython3.11-minimal",
+                "zlib1g"
+              ],
+              "filename": "pool/updates/main/p/python3.11/python3.11-minimal_3.11.2-6+deb12u9_amd64.deb",
+              "name": "python3.11-minimal",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable-security/main"
+              ],
+              "sha256": "b5f855ab922dfcd5d1a3223b2118c3dae13ffc7751b0cd5dc24740386323a33a",
+              "size": 2054684,
+              "source": {
+                "name": "python3.11",
+                "version": "3.11.2-6+deb12u9"
+              },
+              "version": "3.11.2-6+deb12u9"
+            },
+            {
+              "arch": "all",
+              "dependencies": [
+                "dpkg"
+              ],
+              "filename": "pool/main/r/readline/readline-common_8.2-1.3_all.deb",
+              "licenses": [
+                "GFDL-NIV-1.3+",
+                "GPL-2+",
+                "GPL-3",
+                "GPL-3+",
+                "ISC-no-attribution"
+              ],
+              "name": "readline-common",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "69317523fe56429aa361545416ad339d138c1500e5a604856a80dd9074b4e35c",
+              "size": 68988,
+              "source": {
+                "name": "readline",
+                "version": "8.2-1.3"
+              },
+              "version": "8.2-1.3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libacl1",
+                "libc6",
+                "libselinux1"
+              ],
+              "essential": true,
+              "filename": "pool/main/s/sed/sed_4.9-1+deb12u1_amd64.deb",
+              "licenses": [
+                "BSD-4-clause-UC",
+                "BSL-1",
+                "GFDL-NIV-1.3+",
+                "GPL-3+",
+                "GPL-3+ and ISC",
+                "X11",
+                "pcre"
+              ],
+              "name": "sed",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "fd557efeee8aae4619c2cb7f68aadccb804322ad4a99ab048aaae5901d253885",
+              "size": 329092,
+              "version": "4.9-1+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "essential": true,
+              "filename": "pool/main/s/sysvinit/sysvinit-utils_3.06-4_amd64.deb",
+              "licenses": [
+                "GPL-2.0",
+                "GPL-2.0+",
+                "GPL-3.0"
+              ],
+              "name": "sysvinit-utils",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "11790842108768ec52432ea22e7b4f057232813b7c27ef6dfe1aba776a5cb90e",
+              "size": 30996,
+              "source": {
+                "name": "sysvinit",
+                "version": "3.06-4"
+              },
+              "version": "3.06-4"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libacl1",
+                "libc6",
+                "libselinux1"
+              ],
+              "essential": true,
+              "filename": "pool/main/t/tar/tar_1.34+dfsg-1.2+deb12u1_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "GPL-3+",
+                "GPL-3+ with Bison exception",
+                "LGPL-3+"
+              ],
+              "name": "tar",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "24fb92e98c2969171f81a8b589263d705f6b1670f95d121cd74c810d4605acc3",
+              "size": 836288,
+              "version": "1.34+dfsg-1.2+deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/t/tree/tree_2.1.0-1_amd64.deb",
+              "licenses": [
+                "GPL-2+",
+                "LGPL-2.1+"
+              ],
+              "name": "tree",
+              "priority": "optional",
+              "reason": "manual",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "4c0dc6088e801285717bae2a98a7672f1e4d2eed4e918355987bc6617a8f490b",
+              "size": 52464,
+              "version": "2.1.0-1"
+            },
+            {
+              "arch": "all",
+              "dependencies": [
+                "debconf"
+              ],
+              "licenses": [
+                "public-domain"
+              ],
+              "name": "tzdata",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [],
+              "version": "2026c-0+deb12u1"
+            },
+            {
+              "arch": "all",
+              "filename": "pool/main/u/usrmerge/usr-is-merged_37~deb12u1_all.deb",
+              "licenses": [
+                "GPL-2+"
+              ],
+              "name": "usr-is-merged",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "908b80730d99afe6f59ed7f449827b7047ceeeaa7637c368c03e4912e0a6de99",
+              "size": 5616,
+              "source": {
+                "name": "usrmerge",
+                "version": "37~deb12u1"
+              },
+              "version": "37~deb12u1"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libblkid1",
+                "libc6",
+                "libcap-ng0",
+                "libcrypt1",
+                "libmount1",
+                "libpam0g",
+                "libselinux1",
+                "libsmartcols1",
+                "libsystemd0",
+                "libtinfo6",
+                "libudev1",
+                "libuuid1",
+                "util-linux-extra",
+                "zlib1g"
+              ],
+              "essential": true,
+              "filename": "pool/main/u/util-linux/util-linux_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "util-linux",
+              "priority": "required",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "8eb241ff24b2e1ee9c0373f4fc9bc728b85bf5966c1496154df7da01c0e42f34",
+              "size": 1177276,
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libaudit1",
+                "libc6",
+                "libsmartcols1"
+              ],
+              "filename": "pool/main/u/util-linux/util-linux-extra_2.38.1-5+deb12u3_amd64.deb",
+              "licenses": [
+                "BSD-3-clause",
+                "BSD-4-clause",
+                "BSLA",
+                "GPL-2",
+                "GPL-2+",
+                "GPL-3+",
+                "LGPL",
+                "LGPL-2+",
+                "LGPL-2.1+",
+                "LGPL-3+",
+                "MIT",
+                "public-domain"
+              ],
+              "name": "util-linux-extra",
+              "priority": "standard",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "b097a68c68e5c47a18e82678729dd9986782cf1d439f53beafad6f6dd3e6d688",
+              "size": 110728,
+              "source": {
+                "name": "util-linux",
+                "version": "2.38.1-5+deb12u3"
+              },
+              "version": "2.38.1-5+deb12u3"
+            },
+            {
+              "arch": "amd64",
+              "dependencies": [
+                "libc6"
+              ],
+              "filename": "pool/main/z/zlib/zlib1g_1.2.13.dfsg-1_amd64.deb",
+              "licenses": [
+                "Zlib"
+              ],
+              "name": "zlib1g",
+              "priority": "optional",
+              "reason": "dependency",
+              "repositories": [
+                "Debian:oldstable/main"
+              ],
+              "sha256": "d7dd1d1411fedf27f5e27650a6eff20ef294077b568f4c8c5e51466dc7c08ce4",
+              "size": 86684,
+              "source": {
+                "name": "zlib",
+                "version": "1:1.2.13.dfsg-1"
+              },
+              "version": "1:1.2.13.dfsg-1"
+            }
+          ],
+          "repositories": [
+            {
+              "architectures": [
+                "amd64"
+              ],
+              "codename": "bookworm-security",
+              "component": "main",
+              "id": "Debian:oldstable-security/main",
+              "label": "Debian-Security",
+              "origin": "Debian",
+              "signedBy": {
+                "package": "debian-archive-keyring",
+                "path": "/usr/share/keyrings/debian-archive-keyring.gpg",
+                "sha256": "506b815cbb32d9b6066b4a2aa524071e071761e7e7f68c3ac74f3061ba852017"
+              },
+              "suite": "bookworm-security",
+              "uris": [
+                "http://deb.debian.org/debian-security"
+              ],
+              "version": "12"
+            },
+            {
+              "architectures": [
+                "amd64"
+              ],
+              "codename": "bookworm-updates",
+              "component": "main",
+              "id": "Debian:oldstable-updates/main",
+              "label": "Debian",
+              "origin": "Debian",
+              "signedBy": {
+                "package": "debian-archive-keyring",
+                "path": "/usr/share/keyrings/debian-archive-keyring.gpg",
+                "sha256": "506b815cbb32d9b6066b4a2aa524071e071761e7e7f68c3ac74f3061ba852017"
+              },
+              "suite": "bookworm-updates",
+              "uris": [
+                "http://deb.debian.org/debian"
+              ],
+              "version": "12-updates"
+            },
+            {
+              "architectures": [
+                "amd64"
+              ],
+              "codename": "bookworm",
+              "component": "main",
+              "id": "Debian:oldstable/main",
+              "label": "Debian",
+              "origin": "Debian",
+              "signedBy": {
+                "package": "debian-archive-keyring",
+                "path": "/usr/share/keyrings/debian-archive-keyring.gpg",
+                "sha256": "506b815cbb32d9b6066b4a2aa524071e071761e7e7f68c3ac74f3061ba852017"
+              },
+              "suite": "bookworm",
+              "uris": [
+                "http://deb.debian.org/debian"
+              ],
+              "version": "12.15"
+            }
+          ],
+          "tool": "apt 2.6.1 (amd64)"
+        }
+      },
+      "platform": {
+        "arch": "x86_64",
+        "codename": "bookworm",
+        "distro": "debian",
+        "idLike": [],
+        "os": "linux",
+        "release": "12",
+        "version": "12"
+      }
+    }
+  },
+  "generator": {
+    "name": "syslock",
+    "version": "0.1.0"
+  },
+  "lockfileVersion": 1
+}

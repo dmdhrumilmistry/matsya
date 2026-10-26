@@ -107,8 +107,8 @@ In a Dockerfile, run `syslock apply --yes` against a committed lock, then
   `rpm -qa`, `/lib/apk/db/installed`, pacman's local db, `brew info --json=v2`).
   It records version, arch, install reason, holds/pins, dependency edges,
   licenses and source package. Hashes come from the signed repo metadata
-  (apt `Packages`, pacman sync dbs, Homebrew bottle manifests for every
-  platform, rpm payload digests, apk checksums). Repositories are recorded
+  (apt `Packages`, pacman sync dbs, Homebrew bottle hashes, rpm payload
+  digests, apk checksums). Repositories are recorded
   with their signing keys.
 * **Apply** asks the native manager for the exact versions in one
   transaction (`apt-get install name:arch=ver …`, `dnf install NEVRA`,
@@ -119,6 +119,14 @@ In a Dockerfile, run `syslock apply --yes` against a committed lock, then
   `pkg:apk`, `pkg:alpm`, `pkg:brew`) with `distro=` qualifiers so scanners
   pick the right advisories, plus hashes, licenses (mapped to SPDX ids) and
   the full dependency graph.
+
+## Examples
+
+[`examples/`](examples) has real output from CI runs: a
+[multi-machine lock](examples/multi-machine.lock.json) (Debian, Fedora,
+Alpine, Arch, macOS Homebrew in one file) and the
+[CycloneDX](examples/debian-12.cdx.json) and [SPDX](examples/debian-12.spdx.json)
+SBOMs for the Debian environment.
 
 ## Docs
 

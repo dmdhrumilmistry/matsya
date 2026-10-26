@@ -66,8 +66,9 @@ commit), `worldEntry` (original world constraint/tag), `virtual`. Section:
 **pacman**: `sha256`, `size`, `filename`, `packager`. Section:
 `repositories[] {id, servers}`.
 
-**brew**: `kind` (`formula`/`cask`), `tap`, `bottles {tag: sha256}` (only
-when the installed version is the formula's current version), `pinned`,
+**brew**: `kind` (`formula`/`cask`), `tap`, `bottles {tag: sha256}` (bottle
+hash(es) Homebrew reports, only when the installed version is the formula's
+current version), `pinned`,
 `outdated`, `builtFromSource`, `otherKegs`; casks: `sha256`, `url`,
 `autoUpdates`. Section: `taps[] {name, remote, customRemote, commit}`,
 `prefix`.

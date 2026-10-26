@@ -3,9 +3,9 @@
 Homebrew is the odd one out: there is no repository of old versions, only
 the current formula definition. What we can do:
 
-* record exact versions plus the sha256 of every platform's bottle for that
-  version (taken from the formula, so one lock covers arm64 and Intel Macs
-  and Linux);
+* record exact versions plus the bottle sha256 for that version (Homebrew
+  reports the bottle of the platform it runs on; older releases report every
+  platform, which is kept when present);
 * reinstall the same version when it is still current;
 * otherwise reconstruct it with `brew extract` from homebrew-core's git
   history into a local tap (usually builds from source).
@@ -62,7 +62,7 @@ def parse_info(data: Dict[str, object]) -> List[Dict[str, object]]:
             files = (((f.get("bottle") or {}).get("stable") or {}).get("files") or {})
             bottles = {tag: v["sha256"] for tag, v in files.items() if v.get("sha256")}
             if bottles:
-                p["bottles"] = dict(sorted(bottles.items()))
+                p["bottles"] = dict(sorted(bottles.items()))  # tag -> sha256
         else:
             # The formula has moved on; bottle hashes would describe another version.
             p["outdated"] = True
