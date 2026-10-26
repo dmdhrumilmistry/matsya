@@ -1,0 +1,135 @@
+Package: bash
+Status: install ok installed
+Priority: required
+Essential: yes
+Architecture: amd64
+Source: bash (5.2.15-2)
+Version: 5.2.15-2+b7
+Pre-Depends: debianutils (>= 5.6-0.1)
+Depends: base-files (>= 2.1.12), debianutils (>= 2.15)
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: libc6
+Status: install ok installed
+Priority: optional
+Architecture: amd64
+Source: glibc
+Version: 2.36-9+deb12u7
+Depends: libgcc-s1
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: libc6
+Status: install ok installed
+Priority: optional
+Architecture: i386
+Source: glibc
+Version: 2.36-9+deb12u7
+Depends: libgcc-s1
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: curl
+Status: hold ok installed
+Priority: optional
+Architecture: amd64
+Version: 7.88.1-10+deb12u5
+Depends: libc6 (>= 2.34), libcurl4 (= 7.88.1-10+deb12u5) | libcurl3t64
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: libcurl4
+Status: install ok installed
+Priority: optional
+Architecture: amd64
+Source: curl
+Version: 7.88.1-10+deb12u5
+Depends: libc6:any, mail-transport-agent | default-mta
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: postfix
+Status: install ok installed
+Priority: optional
+Architecture: amd64
+Version: 3.7.11-0+deb12u1
+Provides: mail-transport-agent
+Depends: libc6
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: libgcc-s1
+Status: install ok installed
+Priority: optional
+Architecture: amd64
+Source: gcc-12
+Version: 12.2.0-14
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: oldpkg
+Status: deinstall ok config-files
+Priority: optional
+Architecture: amd64
+Version: 1.0-1
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: halfpkg
+Status: install ok unpacked
+Priority: optional
+Architecture: amd64
+Version: 1.0-1
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: base-files
+Status: install ok installed
+Priority: required
+Essential: yes
+Architecture: amd64
+Version: 12.4+deb12u6
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: debianutils
+Status: install ok installed
+Priority: required
+Essential: yes
+Architecture: amd64
+Version: 5.7-0.5~deb12u1
+Description: test package
+ multi-line description
+ .
+ more
+
+Package: ca-certificates
+Status: install ok installed
+Priority: optional
+Architecture: all
+Version: 20230311
+Description: test package
+ multi-line description
+ .
+ more

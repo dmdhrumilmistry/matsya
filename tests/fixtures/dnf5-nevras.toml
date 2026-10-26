@@ -1,0 +1,7 @@
+version = "1.0"
+
+[nevras]
+"alternatives-1.33-5.fc44.aarch64" = {from_repo = "f6ae26d2709140ec8807dba8ce4e3091"}
+"audit-libs-4.2.1-1.fc44.aarch64" = {from_repo = "4b3429950e3844b28ffdbe8ec843ae60"}
+"authselect-1.7.1-1.fc44.aarch64" = {from_repo = "f6ae26d2709140ec8807dba8ce4e3091"}
+"bash-0:5.3.9-3.fc44.aarch64" = {from_repo = "fedora"}

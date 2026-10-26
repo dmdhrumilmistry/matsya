@@ -29,8 +29,12 @@ $ matsya check                # later, in CI
   ~ jq 1.8.1-4ubuntu2 -> 1.8.1-4ubuntu1
 ```
 
-A single static binary (about 1.5 MB, no runtime, no libc dependency on
-Linux), so it runs on minimal and distroless images without installing
+A single static binary (about 3 MB) with **no runtime dependencies and no
+dependency on other programs**: it reads dpkg, rpm (sqlite, ndb and
+BerkeleyDB), apk, pacman and Homebrew databases itself and has its own
+HTTPS client. `lock`, `check`, `diff` and `sbom` work with an empty `PATH`;
+only `apply` runs the system package manager, because installing packages
+is its job. It runs on minimal and distroless images without installing
 anything that would end up in the lock itself.
 
 ## Supported platforms
@@ -114,8 +118,9 @@ In a Dockerfile, run `matsya apply --yes` against a committed lock, then
 
 ## How it works
 
-* **Capture** reads each package manager's own database (`dpkg-query`,
-  `rpm -qa`, `/lib/apk/db/installed`, pacman's local db, `brew info --json=v2`).
+* **Capture** reads each package manager's database files directly
+  (`/var/lib/dpkg/status`, the rpmdb, `/lib/apk/db/installed`, pacman's
+  local db, Homebrew's Cellar receipts and API cache).
   It records version, arch, install reason, holds/pins, dependency edges,
   licenses and source package. Hashes come from the signed repo metadata
   (apt `Packages`, pacman sync dbs, Homebrew bottle hashes, rpm payload

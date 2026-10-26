@@ -1,0 +1,9 @@
+version = "1.0"
+
+[packages]
+"alternatives.aarch64" = {reason = "Dependency"}
+"audit-libs.aarch64" = {reason = "Dependency"}
+"authselect-libs.aarch64" = {reason = "Dependency"}
+"authselect.aarch64" = {reason = "Dependency"}
+"bash.aarch64" = {reason = "User"}
+"bzip2-libs.aarch64" = {reason = "Dependency"}

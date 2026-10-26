@@ -49,11 +49,15 @@ containers in `.github/workflows/ci.yml`.
 | Manual vs automatic install reasons | apt-mark, dnf `--userinstalled`, zypper `AutoInstalled`, apk world, pacman `%REASON%`, brew `installed_on_request`. Restored after apply, and only where they differ. Where the reason can't be read (yum, missing apt-mark), everything is marked manual and a warning is printed. |
 | Locally installed `.deb`/`.rpm` (not from any repo) | `repositories: []` plus a warning at lock time. `apply` reports them as unresolved instead of guessing. |
 | Stale or missing apt indexes (`rm -rf /var/lib/apt/lists` in Docker) | Warns that hashes can't be recorded. `apply` refreshes indexes by default. |
-| Compressed apt indexes (`.lz4`, `.gz`) | Read through `apt-helper cat-file`, so any compression apt supports works. |
+| Compressed apt indexes (`.lz4`, `.gz`, `.xz`, `.zst`) | Detected by magic number and decompressed natively. |
 | zstd-compressed pacman sync dbs | gzip, zstd and plain tar databases are read natively. |
 | Custom pacman `DBPath` | Read from `pacman-conf`. |
 | Non-UTF-8 package metadata | Decoded with replacement; never crashes. |
-| Minimal / distroless images without Python, curl or a shell toolchain | matsya is one static binary; archive downloads use curl, wget or apt's own `apt-helper`, whichever exists. |
+| Minimal / distroless images without Python, curl or a shell toolchain | matsya is one static binary with its own database readers and HTTPS client; `lock`, `check`, `diff` and `sbom` run with an empty `PATH` (enforced in CI). |
+| Interrupted dpkg run (`/var/lib/dpkg/updates/*` journal) | Journal entries are applied on top of `status`, as dpkg itself does. |
+| rpm databases in any backend (sqlite with uncheckpointed WAL, ndb, BerkeleyDB) | Read natively; committed WAL frames override the main file. Verified against `rpm` on Fedora, Rocky 8/9, Amazon Linux 2, CentOS 7 and openSUSE images. |
+| Install reasons per rpm frontend | dnf5 `packages.toml`, dnf4 `history.sqlite`, yum `yumdb`, zypper `AutoInstalled`, all read directly. |
+| Corporate TLS interception / proxies | Downloads trust the operating system's certificate store and honour `HTTPS_PROXY`/`NO_PROXY`. |
 | Localised tool output | Every command runs with `LC_ALL=C`. |
 | Thousands of packages | Commands are batched to stay under `ARG_MAX`. Apt indexes are streamed rather than fully parsed. |
 | Running as root with Homebrew present | Brew refuses root, so matsya skips brew under root and tells you to run `--managers brew` as your user. |

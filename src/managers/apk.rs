@@ -10,7 +10,7 @@ use super::{resolve_dependencies, Manager, Options};
 use crate::model::{vstr, Package, Section, Source};
 use crate::plan::{Plan, Step, Write};
 use crate::platform::Platform;
-use crate::util::{has, read_text_opt, run_ok, sha256_file, warn, Result};
+use crate::util::{read_text_opt, sha256_file, warn, Result};
 
 const INSTALLED_DB: &[&str] = &["/lib/apk/db/installed", "/usr/lib/apk/db/installed"];
 const WORLD: &str = "/etc/apk/world";
@@ -108,6 +108,15 @@ pub fn parse_apkindex(text: &str) -> HashMap<(String, String), String> {
 
 pub struct Apk;
 
+/// What `apk --version` prints, from the installed database.
+fn apk_tool_version(pkgs: &[Package]) -> String {
+    let arch = read_text_opt("/etc/apk/arch").map(|s| s.trim().to_string()).unwrap_or_default();
+    pkgs.iter()
+        .find(|p| p.name == "apk-tools")
+        .map(|p| format!("apk-tools {}, compiled for {}.", p.version, if arch.is_empty() { p.arch() } else { &arch }))
+        .unwrap_or_default()
+}
+
 impl Apk {
     fn db_path(&self) -> Option<&'static str> {
         INSTALLED_DB.iter().copied().find(|p| Path::new(p).exists())
@@ -173,7 +182,7 @@ impl Manager for Apk {
     }
 
     fn available(&self) -> bool {
-        has("apk") && self.db_path().is_some()
+        self.db_path().is_some()
     }
 
     fn installed(&self, _plat: &Platform) -> Result<Vec<Package>> {
@@ -237,7 +246,7 @@ impl Manager for Apk {
         }
         db.pkgs.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(Section {
-            tool: Some(run_ok(&["apk", "--version"]).trim().to_string()),
+            tool: Some(apk_tool_version(&db.pkgs)),
             repositories: Some(repos),
             keys: Some(keys_out),
             packages: db.pkgs,

@@ -1,6 +1,13 @@
-# Static musl builds need no C toolchain for the target.
+# Static musl builds. Pure-Rust crates link with rust-lld; the TLS stack
+# (ring) compiles a little C/assembly, which needs musl-gcc on the build
+# machine (Debian/Ubuntu: apt install musl-tools). Build each target on its
+# own architecture, as CI does.
 [target.aarch64-unknown-linux-musl]
 linker = "rust-lld"
 
 [target.x86_64-unknown-linux-musl]
 linker = "rust-lld"
+
+[env]
+CC_aarch64_unknown_linux_musl = "musl-gcc"
+CC_x86_64_unknown_linux_musl = "musl-gcc"

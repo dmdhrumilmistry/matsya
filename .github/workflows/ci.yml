@@ -46,6 +46,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
+      - run: sudo apt-get install -y -q musl-tools
       - run: cargo build --release --locked --target ${{ matrix.target }}
       - run: file target/${{ matrix.target }}/release/matsya && ls -la target/${{ matrix.target }}/release/matsya
       - uses: actions/upload-artifact@v4
@@ -93,6 +94,8 @@ jobs:
           - ubuntu:24.04
           - fedora:latest
           - rockylinux/rockylinux:9
+          - rockylinux/rockylinux:8
+          - amazonlinux:2
           - opensuse/tumbleweed
           - alpine:latest
           - archlinux:latest
@@ -109,6 +112,12 @@ jobs:
           name: matsya-${{ matrix.arch }}-unknown-linux-musl
           path: bin
       - run: chmod +x bin/matsya && mkdir -p out
+      - name: No external tools during lock/check/sbom (empty PATH)
+        run: |
+          docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh -c '
+            env -i PATH=/nonexistent /src/bin/matsya lock -f /tmp/l.json &&
+            env -i PATH=/nonexistent /src/bin/matsya check -f /tmp/l.json &&
+            env -i PATH=/nonexistent /src/bin/matsya sbom -f /tmp/l.json -o /tmp/s.json'
       - name: Capture, drift, repair
         run: docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh capture /src/out/env.lock.json
       - name: Restore on a fresh container

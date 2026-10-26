@@ -1,0 +1,18 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: Debian
+Label: Debian-Security
+Suite: stable-security
+Version: 12
+Codename: bookworm-security
+Date: Sat, 26 Oct 2024 10:00:00 UTC
+Valid-Until: Sat, 02 Nov 2024 10:00:00 UTC
+Architectures: amd64 arm64
+Components: updates/main main
+SHA256:
+ 0123 1234 main/binary-amd64/Packages
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEE
+-----END PGP SIGNATURE-----

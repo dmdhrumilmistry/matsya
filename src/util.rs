@@ -83,58 +83,15 @@ pub fn has(cmd: &str) -> bool {
     which(cmd).is_some()
 }
 
-/// A command's result. Output is decoded leniently because package
-/// metadata is not guaranteed to be valid UTF-8.
-pub struct Output {
-    pub code: i32,
-    pub stdout: String,
-    pub stderr: String,
-}
-
-fn command(args: &[&str]) -> Command {
-    let mut c = Command::new(args[0]);
-    c.args(&args[1..]);
-    // Package managers translate their output; force a parseable locale.
-    c.env("LC_ALL", "C").env("LANG", "C").env("LANGUAGE", "C");
-    // Homebrew must never auto-update or nag while we only read state.
-    for (k, v) in [
-        ("HOMEBREW_NO_AUTO_UPDATE", "1"),
-        ("HOMEBREW_NO_ANALYTICS", "1"),
-        ("HOMEBREW_NO_ENV_HINTS", "1"),
-        ("HOMEBREW_NO_INSTALL_CLEANUP", "1"),
-    ] {
-        c.env(k, v);
-    }
-    c
-}
-
-pub fn exec(args: &[&str]) -> Result<Output> {
+/// Ask the system package manager a question during `apply` (e.g. which
+/// exact versions its repositories offer) and return its stdout. This is the
+/// only place matsya runs another program besides the install steps of an
+/// apply plan; capture, check, diff and SBOM generation never do.
+pub fn package_manager_query(args: &[&str]) -> String {
     debug(&format!("exec: {}", args.join(" ")));
-    let out = command(args).stdin(Stdio::null()).output().map_err(|e| Error(format!("cannot run {}: {e}", args[0])))?;
-    Ok(Output {
-        code: out.status.code().unwrap_or(-1),
-        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
-    })
-}
-
-/// Run and return stdout; fail on a non-zero exit.
-pub fn run(args: &[&str]) -> Result<String> {
-    let o = exec(args)?;
-    if o.code != 0 {
-        bail!("command failed ({}): {}\n{}", o.code, args.join(" "), o.stderr.trim());
-    }
-    Ok(o.stdout)
-}
-
-/// Run and return stdout, or an empty string if the command is missing or fails.
-pub fn run_ok(args: &[&str]) -> String {
-    exec(args).map(|o| if o.code == 0 { o.stdout } else { String::new() }).unwrap_or_default()
-}
-
-/// Like `run_ok`, but keep stdout even on a non-zero exit (rpm -qf etc.).
-pub fn run_any(args: &[&str]) -> String {
-    exec(args).map(|o| o.stdout).unwrap_or_default()
+    let mut c = Command::new(args[0]);
+    c.args(&args[1..]).env("LC_ALL", "C").env("LANG", "C").stdin(Stdio::null()).stderr(Stdio::null());
+    c.output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
 }
 
 pub fn read_text(path: impl AsRef<Path>) -> Result<String> {

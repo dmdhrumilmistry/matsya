@@ -26,6 +26,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y -q musl-tools
       - run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Package
         run: |

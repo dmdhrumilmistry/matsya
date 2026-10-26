@@ -10,7 +10,7 @@ use super::{resolve_dependencies, Manager, Options};
 use crate::model::{Package, Section, Source};
 use crate::plan::{Fetch, Plan, Step};
 use crate::platform::Platform;
-use crate::util::{has, read_text_opt, run_ok, Result};
+use crate::util::{read_text_opt, Result};
 
 /// Every package Arch has ever shipped, by name.
 const ALA: &str = "https://archive.archlinux.org/packages/{first}/{name}/{filename}";
@@ -118,17 +118,83 @@ pub fn read_sync_db(path: &str, repo: &str) -> HashMap<(String, String), SyncEnt
 /// Installed packages with their raw requires and provides.
 type LocalDb = (Vec<Package>, HashMap<String, Vec<Vec<String>>>, HashMap<String, Vec<String>>);
 
+const PACMAN_CONF: &str = "/etc/pacman.conf";
+
+/// The parts of pacman.conf matsya needs, as `pacman-conf` would report them.
+#[derive(Debug, Default, PartialEq)]
+pub struct PacmanConf {
+    pub dbpath: String,
+    /// Repositories in order, with expanded Server URLs.
+    pub repos: Vec<(String, Vec<String>)>,
+}
+
+/// Parse pacman.conf; `include` reads files named by Include directives.
+pub fn parse_pacman_conf(text: &str, include: &dyn Fn(&str) -> Option<String>) -> PacmanConf {
+    let mut conf = PacmanConf { dbpath: "/var/lib/pacman".into(), repos: vec![] };
+    let mut arch = std::env::consts::ARCH.to_string();
+    // First pass: options (Architecture affects $arch in every repo).
+    let mut section = String::new();
+    for line in text.lines() {
+        let line = line.split('#').next().unwrap_or("").trim();
+        if line.starts_with('[') && line.ends_with(']') {
+            section = line[1..line.len() - 1].trim().to_string();
+        } else if section == "options" {
+            if let Some((k, v)) = line.split_once('=') {
+                match k.trim() {
+                    "DBPath" => conf.dbpath = v.trim().trim_end_matches('/').to_string(),
+                    "Architecture" => {
+                        if let Some(a) = v.split_whitespace().find(|a| *a != "auto") {
+                            arch = a.to_string();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    let servers_in = |body: &str, repo: &str| -> Vec<String> {
+        body.lines()
+            .filter_map(|l| {
+                let l = l.split('#').next().unwrap_or("").trim();
+                let (k, v) = l.split_once('=')?;
+                (k.trim() == "Server").then(|| v.trim().replace("$repo", repo).replace("$arch", &arch))
+            })
+            .collect()
+    };
+    section.clear();
+    for line in text.lines() {
+        let line = line.split('#').next().unwrap_or("").trim();
+        if line.starts_with('[') && line.ends_with(']') {
+            section = line[1..line.len() - 1].trim().to_string();
+            if section != "options" {
+                conf.repos.push((section.clone(), vec![]));
+            }
+            continue;
+        }
+        if section.is_empty() || section == "options" {
+            continue;
+        }
+        let Some((k, v)) = line.split_once('=') else { continue };
+        let found = match k.trim() {
+            "Server" => servers_in(line, &section),
+            "Include" => include(v.trim()).map(|t| servers_in(&t, &section)).unwrap_or_default(),
+            _ => continue,
+        };
+        conf.repos.last_mut().expect("in a repo section").1.extend(found);
+    }
+    conf
+}
+
 pub struct Pacman;
 
 impl Pacman {
+    fn conf(&self) -> PacmanConf {
+        let text = read_text_opt(PACMAN_CONF).unwrap_or_default();
+        parse_pacman_conf(&text, &|p| read_text_opt(p))
+    }
+
     fn dbpath(&self) -> String {
-        if has("pacman-conf") {
-            let out = run_ok(&["pacman-conf", "DBPath"]);
-            if !out.trim().is_empty() {
-                return out.trim().trim_end_matches('/').to_string();
-            }
-        }
-        "/var/lib/pacman".into()
+        self.conf().dbpath
     }
 
     fn local(&self) -> LocalDb {
@@ -173,7 +239,7 @@ impl Manager for Pacman {
     }
 
     fn available(&self) -> bool {
-        has("pacman")
+        Path::new(&self.dbpath()).join("local").is_dir()
     }
 
     fn installed(&self, _plat: &Platform) -> Result<Vec<Package>> {
@@ -196,19 +262,14 @@ impl Manager for Pacman {
                 p.licenses.clear();
             }
         }
-        let mut repos = Vec::new();
-        if has("pacman-conf") {
-            for name in run_ok(&["pacman-conf", "--repo-list"]).split_whitespace() {
-                let servers: Vec<String> = run_ok(&["pacman-conf", "--repo", name, "Server"])
-                    .split_whitespace()
-                    .take(3)
-                    .map(String::from)
-                    .collect();
-                repos.push(json!({"id": name, "servers": servers}));
-            }
-        }
+        let repos: Vec<_> = self
+            .conf()
+            .repos
+            .into_iter()
+            .map(|(name, servers)| json!({"id": name, "servers": servers.into_iter().take(3).collect::<Vec<_>>()}))
+            .collect();
         let tool =
-            run_ok(&["pacman", "--version"]).lines().rfind(|l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
+            pkgs.iter().find(|p| p.name == "pacman").map(|p| format!("pacman {}", p.version)).unwrap_or_default();
         Ok(Section { tool: Some(tool), repositories: Some(repos), packages: pkgs, ..Default::default() })
     }
 
@@ -336,6 +397,24 @@ mod tests {
             vec!["ca-certificates", "krb5", "libcurl.so", "glibc", "sh"]
         );
         assert_eq!(prov, vec!["libcurl.so"]);
+    }
+
+    #[test]
+    fn pacman_conf() {
+        let conf = "[options]\nArchitecture = auto x86_64\nDBPath = /srv/pacman/\n#[testing]\n[core]\nInclude = /etc/pacman.d/mirrorlist\n\n[custom]\nSigLevel = Optional\nServer = file:///repo/$repo/$arch # local\n";
+        let mirrors = "[options]\n## comment\nServer = https://a.example/$repo/os/$arch\n#Server = https://disabled\nServer = https://b.example/$repo/os/$arch\n";
+        let c = parse_pacman_conf(conf, &|p| (p == "/etc/pacman.d/mirrorlist").then(|| mirrors.to_string()));
+        assert_eq!(c.dbpath, "/srv/pacman");
+        assert_eq!(
+            c.repos,
+            vec![
+                (
+                    "core".to_string(),
+                    vec!["https://a.example/core/os/x86_64".to_string(), "https://b.example/core/os/x86_64".into()]
+                ),
+                ("custom".to_string(), vec!["file:///repo/custom/x86_64".to_string()]),
+            ]
+        );
     }
 
     #[test]

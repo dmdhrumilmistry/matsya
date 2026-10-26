@@ -14,6 +14,7 @@ M=/src/bin/matsya
 if command -v apt-get >/dev/null 2>&1; then PM=apt
 elif command -v zypper >/dev/null 2>&1; then PM=zypper
 elif command -v dnf >/dev/null 2>&1; then PM=dnf
+elif command -v yum >/dev/null 2>&1; then PM=yum
 elif command -v apk >/dev/null 2>&1; then PM=apk
 elif command -v pacman >/dev/null 2>&1; then PM=pacman
 else echo "unknown package manager"; exit 1; fi
@@ -22,6 +23,7 @@ pm_install() {
   case $PM in
     apt) DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@" ;;
     dnf) dnf install -y "$@" ;;
+    yum) yum install -y "$@" ;;
     zypper) zypper --non-interactive install "$@" ;;
     apk) apk add "$@" ;;
     pacman) pacman -S --noconfirm --needed "$@" ;;
@@ -31,6 +33,7 @@ pm_remove() {
   case $PM in
     apt) DEBIAN_FRONTEND=noninteractive apt-get purge -y "$@" ;;
     dnf) dnf remove -y "$@" ;;
+    yum) yum remove -y "$@" ;;
     zypper) zypper --non-interactive remove "$@" ;;
     apk) apk del "$@" ;;
     pacman) pacman -R --noconfirm "$@" ;;
@@ -40,6 +43,7 @@ refresh() {
   case $PM in
     apt) apt-get update -q ;;
     dnf) dnf -y makecache ;;
+    yum) yum -y makecache ;;
     zypper) zypper --non-interactive refresh ;;
     apk) apk update ;;
     pacman) pacman -Sy --noconfirm ;;

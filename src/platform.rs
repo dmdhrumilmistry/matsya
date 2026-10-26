@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::{has, read_text_opt, run_ok};
+use crate::util::read_text_opt;
 
 /// Field presence is preserved exactly (Option) so that re-serialising a
 /// lock written by another version never changes its digest.
@@ -169,12 +169,11 @@ pub fn from_os_release(text: &str, arch: String) -> Platform {
 
 pub fn detect() -> Platform {
     if cfg!(target_os = "macos") {
-        let version = run_ok(&["sw_vers", "-productVersion"]).trim().to_string();
-        let version = if version.is_empty() { "unknown".to_string() } else { version };
+        let version = macos_version().unwrap_or_else(|| "unknown".into());
         let major = version.split('.').next().unwrap_or("").to_string();
-        let mut arch = normalize_arch(run_ok(&["uname", "-m"]).trim());
-        // Rosetta: a translated shell reports x86_64 on Apple Silicon.
-        if arch == "x86_64" && run_ok(&["sysctl", "-in", "sysctl.proc_translated"]).trim() == "1" {
+        let mut arch = normalize_arch(std::env::consts::ARCH);
+        // Rosetta: an x86_64 build running translated on Apple Silicon.
+        if arch == "x86_64" && rosetta() {
             arch = "aarch64".into();
         }
         return Platform {
@@ -192,16 +191,52 @@ pub fn detect() -> Platform {
     from_os_release(&text, native_arch())
 }
 
-/// The architecture packages are built for. This differs from uname on
-/// e.g. a 32-bit userland running on a 64-bit kernel.
+/// ProductVersion from SystemVersion.plist (what `sw_vers` prints).
+fn macos_version() -> Option<String> {
+    let plist = read_text_opt("/System/Library/CoreServices/SystemVersion.plist")?;
+    plist_string(&plist, "ProductVersion")
+}
+
+/// The <string> following <key>name</key> in an XML plist.
+pub fn plist_string(plist: &str, key: &str) -> Option<String> {
+    let after = plist.split(&format!("<key>{key}</key>")).nth(1)?;
+    let start = after.find("<string>")? + "<string>".len();
+    let end = after[start..].find("</string>")? + start;
+    Some(after[start..end].trim().to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn rosetta() -> bool {
+    let mut val: libc::c_int = 0;
+    let mut len = std::mem::size_of::<libc::c_int>();
+    let name = b"sysctl.proc_translated\0";
+    // SAFETY: valid NUL-terminated name, output buffer sized for a c_int.
+    let rc = unsafe {
+        libc::sysctlbyname(
+            name.as_ptr() as *const libc::c_char,
+            &mut val as *mut _ as *mut libc::c_void,
+            &mut len,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+    rc == 0 && val == 1
+}
+
+#[cfg(not(target_os = "macos"))]
+fn rosetta() -> bool {
+    false
+}
+
+/// The architecture packages are built for. This differs from the binary's
+/// own arch for e.g. a 32-bit userland on a 64-bit kernel.
 pub fn native_arch() -> String {
-    for args in [&["dpkg", "--print-architecture"][..], &["apk", "--print-arch"][..]] {
-        if has(args[0]) {
-            let out = run_ok(args);
-            if !out.trim().is_empty() {
-                return normalize_arch(out.trim());
-            }
-        }
+    if let (Some(a), _) = crate::managers::apt::dpkg_arches(std::path::Path::new(crate::managers::apt::DPKG_DIR), None)
+    {
+        return normalize_arch(&a);
+    }
+    if let Some(a) = read_text_opt("/etc/apk/arch").map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+        return normalize_arch(&a);
     }
     normalize_arch(std::env::consts::ARCH)
 }
@@ -225,6 +260,13 @@ mod tests {
             let p = from_os_release(text, "x86_64".into());
             assert_eq!((p.distro(), p.release()), (d, r), "{text}");
         }
+    }
+
+    #[test]
+    fn plist() {
+        let p = "<dict>\n\t<key>ProductName</key>\n\t<string>macOS</string>\n\t<key>ProductVersion</key>\n\t<string>15.1</string>\n</dict>";
+        assert_eq!(plist_string(p, "ProductVersion").as_deref(), Some("15.1"));
+        assert_eq!(plist_string(p, "Missing"), None);
     }
 
     #[test]

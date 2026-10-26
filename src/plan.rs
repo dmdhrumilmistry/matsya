@@ -5,15 +5,15 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::bail;
-use crate::util::{has, log, run_ok, sha256_file, Result};
+use crate::util::{log, sha256_file, Result};
 
 #[derive(Debug, Clone, Default)]
 pub struct Fetch {
     pub urls: Vec<String>,
     pub dest: String,
     pub sha256: Option<String>,
-    /// For rpm: (header tag, expected value), e.g. ("PAYLOADSHA256", "...").
-    pub rpm_payload: Option<(String, String)>,
+    /// For rpm packages: the expected payload digest from the rpm header.
+    pub rpm_payload: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -67,12 +67,8 @@ impl Step {
             if let Some(sha) = &f.sha256 {
                 lines.push(format!("echo {} | sha256sum -c -", sh_quote(&format!("{sha}  {}", f.dest))));
             }
-            if let Some((tag, want)) = &f.rpm_payload {
-                lines.push(format!(
-                    "test \"$(rpm -qp --nosignature --qf {} {dest})\" = {}",
-                    sh_quote(&format!("%{{{tag}}}")),
-                    sh_quote(want)
-                ));
+            if let Some(want) = &f.rpm_payload {
+                lines.push(format!("# matsya verifies the rpm payload digest is {want} before installing"));
             }
         }
         if let Some(w) = &self.write {
@@ -183,22 +179,11 @@ pub fn fetch_verified(f: &Fetch) -> Result<()> {
     let mut ok = false;
     for url in &f.urls {
         log(&format!("downloading {url}"));
-        let attempt: Vec<String> = if has("curl") {
-            vec!["curl".into(), "-fsSL".into(), "--retry".into(), "3".into(), "-o".into(), tmp.clone(), url.clone()]
-        } else if has("wget") {
-            vec!["wget".into(), "-q".into(), "-O".into(), tmp.clone(), url.clone()]
-        } else if Path::new("/usr/lib/apt/apt-helper").exists() {
-            vec!["/usr/lib/apt/apt-helper".into(), "download-file".into(), url.clone(), tmp.clone()]
-        } else {
-            bail!("no downloader found (need curl, wget or apt-helper)");
-        };
-        let refs: Vec<&str> = attempt.iter().map(String::as_str).collect();
-        match crate::util::exec(&refs) {
-            Ok(o) if o.code == 0 && Path::new(&tmp).exists() => {
+        match download(url, Path::new(&tmp)) {
+            Ok(()) => {
                 ok = true;
                 break;
             }
-            Ok(o) => errors.push(format!("{url}: exit {} {}", o.code, o.stderr.trim())),
             Err(e) => errors.push(format!("{url}: {e}")),
         }
         let _ = std::fs::remove_file(&tmp);
@@ -206,22 +191,61 @@ pub fn fetch_verified(f: &Fetch) -> Result<()> {
     if !ok {
         bail!("download failed:\n  {}", errors.join("\n  "));
     }
+    let reject = |msg: String| -> Result<()> {
+        let _ = std::fs::remove_file(&tmp);
+        Err(crate::util::Error(msg))
+    };
     if let Some(want) = &f.sha256 {
         let got = sha256_file(&tmp)?;
         if &got != want {
-            let _ = std::fs::remove_file(&tmp);
-            bail!("sha256 mismatch for {}: expected {want}, got {got}", f.urls[0]);
+            return reject(format!("sha256 mismatch for {}: expected {want}, got {got}", f.urls[0]));
         }
     }
-    if let Some((tag, want)) = &f.rpm_payload {
-        let got = run_ok(&["rpm", "-qp", "--nosignature", "--qf", &format!("%{{{tag}}}"), &tmp]);
-        if got.trim() != want {
-            let _ = std::fs::remove_file(&tmp);
-            bail!("rpm payload digest mismatch for {}", f.urls[0]);
+    if let Some(want) = &f.rpm_payload {
+        let got = crate::formats::rpmdb::read_rpm_file(Path::new(&tmp))
+            .ok()
+            .and_then(|h| h.hex(crate::formats::rpmdb::PAYLOADDIGEST));
+        if got.as_deref() != Some(want.as_str()) {
+            return reject(format!("rpm payload digest mismatch for {}", f.urls[0]));
         }
     }
     std::fs::rename(&tmp, &f.dest)?;
     Ok(())
+}
+
+/// HTTP(S) download with a pure-Rust client. Uses the operating system's
+/// trust store (so corporate CAs work) and the standard proxy variables.
+/// `file://` URLs are copied (handy for mirrors on disk and for tests).
+pub fn download(url: &str, dest: &Path) -> Result<()> {
+    if let Some(path) = url.strip_prefix("file://") {
+        std::fs::copy(path, dest)?;
+        return Ok(());
+    }
+    use ureq::tls::{RootCerts, TlsConfig};
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .tls_config(TlsConfig::builder().root_certs(RootCerts::PlatformVerifier).build())
+        .proxy(ureq::Proxy::try_from_env())
+        .timeout_global(Some(std::time::Duration::from_secs(900)))
+        .user_agent(concat!("matsya/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .new_agent();
+    let mut last = String::new();
+    for attempt in 0..3 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(2u64 << attempt));
+        }
+        match agent.get(url).call() {
+            Ok(mut resp) => {
+                let mut out = std::fs::File::create(dest)?;
+                std::io::copy(&mut resp.body_mut().as_reader(), &mut out)?;
+                return Ok(());
+            }
+            // 4xx will not get better by retrying.
+            Err(ureq::Error::StatusCode(code)) if (400..500).contains(&code) => bail!("HTTP {code}"),
+            Err(e) => last = e.to_string(),
+        }
+    }
+    bail!("{last}")
 }
 
 #[cfg(test)]
@@ -243,9 +267,6 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let src = dir.join("src.bin");
         std::fs::write(&src, b"hello").unwrap();
-        if !has("curl") {
-            return;
-        }
         let url = format!("file://{}", src.display());
         let dest = dir.join("out.bin").to_string_lossy().into_owned();
         let good = crate::util::sha256_hex(b"hello");

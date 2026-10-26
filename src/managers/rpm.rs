@@ -1,24 +1,25 @@
 //! RPM based distributions: Fedora, RHEL/CentOS/Rocky/Alma, Amazon Linux,
-//! openSUSE/SLES. Inventory comes from rpm itself; installs go through
-//! whichever frontend exists (dnf5, dnf, yum, zypper).
+//! openSUSE/SLES. Inventory is read natively from the rpm database (sqlite,
+//! ndb or BerkeleyDB) and the frontends' own state files; only `apply` runs
+//! the frontend (dnf5, dnf, yum, zypper) to install packages.
 
-use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
 use super::{batches, by_key, resolve_dependencies, Manager, Options};
 use crate::bail;
+use crate::formats::rpmdb::{self, Header};
+use crate::formats::sqlite;
 use crate::model::{vstr, Package, Section, Source};
 use crate::plan::{Fetch, Plan, Step, Write};
 use crate::platform::Platform;
-use crate::util::{has, read_text_opt, run, run_any, run_ok, split_lines, warn, Result};
+use crate::util::{has, package_manager_query, read_text_opt, split_lines, warn, Result};
 
 const NOARCH: &str = "noarch";
 /// Fedora's build system keeps every build ever shipped.
 const KOJI: &str = "https://kojipkgs.fedoraproject.org/packages/{src}/{version}/{release}/{arch}/{name}-{version}-{release}.{arch}.rpm";
-const QF_FIELDS: &[&str] =
-    &["NAME", "EPOCHNUM", "VERSION", "RELEASE", "ARCH", "SOURCERPM", "LICENSE", "PAYLOADDIGEST", "SIGMD5", "VENDOR"];
 
 /// dnf's default installonlypkgs plus zypper's multiversion kernels.
 const INSTALLONLY: &[&str] = &[
@@ -48,42 +49,32 @@ fn none(s: &str) -> bool {
     s.is_empty() || s == "(none)"
 }
 
-pub fn parse_rpm_qa(out: &str) -> Vec<Package> {
-    let mut pkgs = Vec::new();
-    for line in out.lines() {
-        let c: Vec<&str> = line.split('\t').collect();
-        if c.len() < QF_FIELDS.len() {
-            continue;
-        }
-        let (name, epoch, ver, rel, arch, srpm, lic, payload, sigmd5, vendor) =
-            (c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9]);
-        if name == "gpg-pubkey" {
-            continue; // imported signing keys masquerade as packages
-        }
-        let mut p = Package::new(name, format!("{ver}-{rel}"));
-        p.arch = Some(arch.into());
-        if !none(epoch) && epoch != "0" {
-            p.epoch = Some(epoch.parse::<i64>().map(Value::from).unwrap_or_else(|_| json!(epoch)));
-        }
-        let src = srpm_name(srpm);
-        if !src.is_empty() && src != name {
-            p.source = Some(Source { name: src, version: None });
-        }
-        if !none(lic) {
-            p.licenses = vec![lic.into()];
-        }
-        if !none(payload) {
-            p.payload_digest = Some(payload.into());
-        }
-        if !none(sigmd5) {
-            p.sigmd5 = Some(sigmd5.into());
-        }
-        if !none(vendor) {
-            p.vendor = Some(vendor.into());
-        }
-        pkgs.push(p);
+/// A lock entry from an rpm header (None for gpg-pubkey pseudo packages).
+pub fn package_from_header(h: &Header) -> Option<Package> {
+    let name = h.string(rpmdb::NAME)?;
+    if name == "gpg-pubkey" {
+        return None; // imported signing keys masquerade as packages
     }
-    pkgs
+    let mut p = Package::new(
+        name,
+        format!("{}-{}", h.string(rpmdb::VERSION).unwrap_or(""), h.string(rpmdb::RELEASE).unwrap_or("")),
+    );
+    p.arch = Some(h.string(rpmdb::ARCH).unwrap_or("").into());
+    if let Some(e) = h.int(rpmdb::EPOCH).filter(|e| *e != 0) {
+        p.epoch = Some(json!(e));
+    }
+    let src = srpm_name(h.string(rpmdb::SOURCERPM).unwrap_or(""));
+    if !src.is_empty() && src != name {
+        p.source = Some(Source { name: src, version: None });
+    }
+    let opt = |v: Option<String>| v.filter(|x| !none(x));
+    if let Some(l) = opt(h.string(rpmdb::LICENSE).map(String::from)) {
+        p.licenses = vec![l];
+    }
+    p.payload_digest = opt(h.hex(rpmdb::PAYLOADDIGEST));
+    p.sigmd5 = opt(h.hex(rpmdb::SIGMD5));
+    p.vendor = opt(h.string(rpmdb::VENDOR).map(String::from));
+    Some(p)
 }
 
 /// Flag packages that may be installed in several versions at once:
@@ -159,7 +150,7 @@ pub fn parse_repo_files(files: &[(String, String)]) -> Vec<Value> {
 
 /// What the user asked for: dnf lists user-installed name.arch; zypper
 /// lists what was pulled in automatically (inverted).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct UserInstalled {
     pub names: HashSet<String>,
     pub inverted: bool,
@@ -172,105 +163,99 @@ pub fn reason(p: &Package, user: &Option<UserInstalled>) -> String {
     if manual { "manual" } else { "dependency" }.into()
 }
 
-#[derive(Default)]
+/// Reads under a filesystem root ("/" normally, a fixture in tests).
 pub struct Rpm {
-    tags: RefCell<Option<HashSet<String>>>,
+    root: PathBuf,
+}
+
+impl Default for Rpm {
+    fn default() -> Self {
+        Rpm { root: PathBuf::from("/") }
+    }
+}
+
+/// Install reasons recorded by the frontends, keyed by "name.arch".
+#[derive(Debug, Default)]
+pub struct FrontendState {
+    pub user: Option<UserInstalled>,
+    /// name.arch -> repository the package came from
+    pub repos: HashMap<String, String>,
 }
 
 impl Rpm {
+    #[cfg(test)]
+    pub fn at(root: &Path) -> Self {
+        Rpm { root: root.to_path_buf() }
+    }
+
     pub fn frontend(&self) -> Option<&'static str> {
         ["dnf5", "dnf", "yum", "zypper", "microdnf"].into_iter().find(|f| has(f))
     }
 
-    fn tags(&self) -> HashSet<String> {
-        self.tags
-            .borrow_mut()
-            .get_or_insert_with(|| run_ok(&["rpm", "--querytags"]).split_whitespace().map(String::from).collect())
-            .clone()
+    fn headers(&self) -> Result<Vec<Header>> {
+        let Some(dir) = rpmdb::find(&self.root) else { bail!("no rpm database found") };
+        rpmdb::read_all(&dir)
     }
 
-    /// RPM 6 renamed PAYLOADDIGEST to PAYLOADSHA256; RPM < 4.14 has neither.
-    fn payload_tag(&self) -> Option<&'static str> {
-        let t = self.tags();
-        ["PAYLOADSHA256", "PAYLOADDIGEST"].into_iter().find(|x| t.contains(*x))
-    }
-
-    fn qa(&self) -> Result<Vec<Package>> {
-        let payload = self.payload_tag();
-        // An unknown tag makes rpm print an error yet exit 0 with no output.
-        let fields: Vec<&str> =
-            QF_FIELDS.iter().map(|f| if *f == "PAYLOADDIGEST" { payload.unwrap_or("NAME") } else { f }).collect();
-        let qf = fields.iter().map(|f| format!("%{{{f}}}")).collect::<Vec<_>>().join("\\t") + "\\n";
-        let mut pkgs = parse_rpm_qa(&run(&["rpm", "-qa", "--qf", &qf])?);
-        if payload.is_none() {
-            for p in &mut pkgs {
-                p.payload_digest = None;
-            }
-        }
+    fn qa(&self, headers: &[Header]) -> Vec<Package> {
+        let mut pkgs: Vec<Package> = headers.iter().filter_map(package_from_header).collect();
         mark_installonly(&mut pkgs);
-        if pkgs.is_empty() && !run_ok(&["rpm", "-qa"]).trim().is_empty() {
-            bail!(
-                "rpm returned packages but none could be parsed; please report this with the output of `rpm --version`"
-            );
-        }
-        Ok(pkgs)
+        pkgs
     }
 
-    fn user_installed(&self, fe: Option<&str>) -> Option<UserInstalled> {
-        match fe {
-            Some(f @ ("dnf5" | "dnf")) => {
-                let names: HashSet<String> =
-                    split_lines(&run_ok(&[f, "-q", "repoquery", "--userinstalled", "--qf", "%{name}.%{arch}\\n"]))
-                        .into_iter()
-                        .collect();
-                (!names.is_empty()).then_some(UserInstalled { names, inverted: false })
+    /// What the user asked for and where packages came from, read from the
+    /// state files of whichever frontend manages this system.
+    pub fn frontend_state(&self) -> FrontendState {
+        let r = |p: &str| self.root.join(p);
+        // dnf5: TOML files under /usr/lib/sysimage/libdnf5.
+        if let Some(text) = read_text_opt(r("usr/lib/sysimage/libdnf5/packages.toml")) {
+            return dnf5_state(&text, read_text_opt(r("usr/lib/sysimage/libdnf5/nevras.toml")).as_deref());
+        }
+        // dnf4: the history database.
+        if r("var/lib/dnf/history.sqlite").is_file() {
+            if let Ok(st) = dnf4_state(&r("var/lib/dnf/history.sqlite")) {
+                return st;
             }
-            Some("zypper") => read_text_opt("/var/lib/zypp/AutoInstalled").map(|t| UserInstalled {
-                names: t
-                    .lines()
-                    .map(str::trim)
-                    .filter(|l| !l.is_empty() && !l.starts_with('#'))
-                    .map(String::from)
-                    .collect(),
-                inverted: true,
-            }),
-            _ => None,
         }
+        // yum: one directory per package with small text files.
+        if r("var/lib/yum/yumdb").is_dir() {
+            return yumdb_state(&r("var/lib/yum/yumdb"));
+        }
+        // zypper: the list of automatically installed packages.
+        if let Some(t) = read_text_opt(r("var/lib/zypp/AutoInstalled")) {
+            let names =
+                t.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')).map(String::from).collect();
+            return FrontendState { user: Some(UserInstalled { names, inverted: true }), repos: HashMap::new() };
+        }
+        FrontendState::default()
     }
 
-    fn deps(&self, pkgs: &mut [Package], plat: &Platform) {
-        let sep = '\x1f';
+    fn deps(&self, pkgs: &mut [Package], headers: &[Header], plat: &Platform) {
         let keys: Vec<String> = pkgs.iter().map(|p| self.key_of(p, plat)).collect();
-        let by_na: HashMap<String, String> =
-            pkgs.iter().zip(&keys).map(|(p, k)| (format!("{}.{}", p.name, p.arch()), k.clone())).collect();
-        // %{=TAG} repeats a scalar inside an array iteration (required by RPM 6).
-        let qf = format!("[%{{=NAME}}.%{{=ARCH}}{sep}P{sep}%{{PROVIDENAME}}\\n][%{{=NAME}}.%{{=ARCH}}{sep}R{sep}%{{REQUIRENAME}}\\n]");
+        let by_nevra: HashMap<String, String> = pkgs.iter().zip(&keys).map(|(p, k)| (nevra(p), k.clone())).collect();
         let mut requires: HashMap<String, Vec<Vec<String>>> = HashMap::new();
         let mut provides: HashMap<String, Vec<String>> = HashMap::new();
-        let mut files: HashSet<String> = HashSet::new();
-        for line in run_ok(&["rpm", "-qa", "--qf", &qf]).lines() {
-            let parts: Vec<&str> = line.split(sep).collect();
-            if parts.len() != 3 {
-                continue;
-            }
-            let Some(k) = by_na.get(parts[0]) else { continue };
-            if parts[1] == "P" {
-                provides.entry(k.clone()).or_default().push(parts[2].into());
-            } else if !parts[2].starts_with("rpmlib(") {
-                requires.entry(k.clone()).or_default().push(vec![parts[2].into()]);
-                if parts[2].starts_with('/') {
-                    files.insert(parts[2].into());
+        let mut files: HashSet<&str> = HashSet::new();
+        let pkg_of = |h: &Header| package_from_header(h).and_then(|p| by_nevra.get(&nevra(&p)).cloned());
+        for h in headers {
+            let Some(k) = pkg_of(h) else { continue };
+            provides.entry(k.clone()).or_default().extend(h.strings(rpmdb::PROVIDENAME).iter().cloned());
+            for r in h.strings(rpmdb::REQUIRENAME) {
+                if !r.starts_with("rpmlib(") {
+                    requires.entry(k.clone()).or_default().push(vec![r.clone()]);
+                    if r.starts_with('/') {
+                        files.insert(r);
+                    }
                 }
             }
         }
         // File requirements (/bin/sh) are satisfied by whoever owns the file.
         if !files.is_empty() {
-            for line in
-                run_ok(&["rpm", "-qa", "--qf", &format!("[%{{=NAME}}.%{{=ARCH}}{sep}%{{FILENAMES}}\\n]")]).lines()
-            {
-                if let Some((owner, path)) = line.split_once(sep) {
-                    if let (true, Some(k)) = (files.contains(path), by_na.get(owner)) {
-                        provides.entry(k.clone()).or_default().push(path.into());
+            for h in headers {
+                let Some(k) = pkg_of(h) else { continue };
+                for f in h.files() {
+                    if files.contains(f.as_str()) {
+                        provides.entry(k.clone()).or_default().push(f);
                     }
                 }
             }
@@ -278,24 +263,10 @@ impl Rpm {
         resolve_dependencies(pkgs, &keys, &requires, &provides);
     }
 
-    fn installed_repos(&self, fe: Option<&str>) -> HashMap<String, String> {
-        let Some(f @ ("dnf5" | "dnf")) = fe else { return HashMap::new() };
-        split_lines(&run_ok(&[f, "-q", "repoquery", "--installed", "--qf", "%{name}.%{arch}|%{from_repo}\\n"]))
-            .into_iter()
-            .filter_map(|l| {
-                let (na, repo) = l.split_once('|')?;
-                let opaque = repo.len() == 32 && repo.chars().all(|c| c.is_ascii_hexdigit());
-                // dnf5 reports an opaque hash for packages that came with the image.
-                (!repo.is_empty() && !["@System", "<unknown>", "(none)"].contains(&repo) && !opaque)
-                    .then(|| (na.to_string(), repo.trim_start_matches('@').to_string()))
-            })
-            .collect()
-    }
-
-    fn repo_files() -> Vec<(String, String)> {
+    fn repo_files(&self) -> Vec<(String, String)> {
         let mut out = Vec::new();
-        for dir in ["/etc/yum.repos.d", "/etc/zypp/repos.d", "/etc/distro.repos.d"] {
-            let mut v: Vec<String> = std::fs::read_dir(dir)
+        for dir in ["etc/yum.repos.d", "etc/zypp/repos.d", "etc/distro.repos.d"] {
+            let mut v: Vec<String> = std::fs::read_dir(self.root.join(dir))
                 .map(|d| {
                     d.filter_map(|e| e.ok())
                         .map(|e| e.path().to_string_lossy().into_owned())
@@ -345,15 +316,171 @@ impl Rpm {
             let mut args = vec![fe, "-q", "repoquery", "--qf", "%{name}-%{evr}.%{arch}\\n"];
             args.extend(chunk.iter().map(String::as_str));
             // repoquery prints EVR without a zero epoch; normalise.
-            avail.extend(split_lines(&run_any(&args)).into_iter().map(|a| a.replace("-0:", "-")));
+            avail.extend(split_lines(&package_manager_query(&args)).into_iter().map(|a| a.replace("-0:", "-")));
         }
         avail
     }
 }
 
-/// Compare two EVRs with rpm's own algorithm (via its embedded Lua).
-fn rpm_vercmp(a: &str, b: &str) -> i32 {
-    run_ok(&["rpm", "--eval", &format!("%{{lua: print(rpm.vercmp({a:?}, {b:?}))}}")]).trim().parse().unwrap_or(0)
+/// dnf5 state: packages.toml has reasons by "name.arch", nevras.toml the
+/// repository of every installed NEVRA.
+pub fn dnf5_state(packages: &str, nevras: Option<&str>) -> FrontendState {
+    let mut st = FrontendState::default();
+    if let Ok(v) = packages.parse::<toml::Table>() {
+        let names = v
+            .get("packages")
+            .and_then(|p| p.as_table())
+            .map(|t| {
+                t.iter()
+                    .filter(|(_, e)| matches!(e.get("reason").and_then(|r| r.as_str()), Some("User" | "Group")))
+                    .map(|(k, _)| k.clone())
+                    .collect::<HashSet<String>>()
+            })
+            .unwrap_or_default();
+        st.user = Some(UserInstalled { names, inverted: false });
+    }
+    if let Some(Ok(v)) = nevras.map(|t| t.parse::<toml::Table>()) {
+        for (nevra, e) in v.get("nevras").and_then(|n| n.as_table()).into_iter().flatten() {
+            if let Some(repo) = e.get("from_repo").and_then(|r| r.as_str()) {
+                st.repos.insert(na_of_nevra(nevra), repo.to_string());
+            }
+        }
+    }
+    st
+}
+
+/// "bash-0:5.2.26-3.fc40.x86_64" -> "bash.x86_64"
+fn na_of_nevra(n: &str) -> String {
+    let (rest, arch) = n.rsplit_once('.').unwrap_or((n, ""));
+    let mut parts = rest.rsplitn(3, '-');
+    let (_rel, _ver, name) = (parts.next(), parts.next(), parts.next().unwrap_or(rest));
+    format!("{name}.{arch}")
+}
+
+/// dnf4 history.sqlite: the latest successful transaction item for each
+/// name.arch carries its current reason (2 = user, 5 = group are manual).
+pub fn dnf4_state(path: &Path) -> Result<FrontendState> {
+    let db = sqlite::Db::open(path)?;
+    let rpms: HashMap<i64, String> = db
+        .table("rpm")?
+        .into_iter()
+        .map(|r| (r.int("item_id"), format!("{}.{}", r.str("name"), r.str("arch"))))
+        .collect();
+    let repos: HashMap<i64, String> =
+        db.table("repo")?.into_iter().map(|r| (r.int("id"), r.str("repoid").to_string())).collect();
+    // action: 1 install, 2 downgrade, 4 obsolete, 6 upgrade, 9 reinstall, 11 reason change;
+    // 3/5/7/8/10 are the outgoing side of a transaction. state 1 = done.
+    let mut latest: HashMap<String, (i64, i64, i64, String)> = HashMap::new();
+    for r in db.table("trans_item")? {
+        let (action, state) = (r.int("action"), r.int("state"));
+        if state != 1 || ![1, 2, 4, 6, 9, 11].contains(&action) {
+            continue;
+        }
+        let Some(na) = rpms.get(&r.int("item_id")) else { continue };
+        let key = (r.int("trans_id"), r.rowid);
+        let repo = if action == 11 { None } else { repos.get(&r.int("repo_id")).cloned() };
+        let e = latest.entry(na.clone()).or_insert((0, 0, 0, String::new()));
+        if key >= (e.0, e.1) {
+            *e = (key.0, key.1, r.int("reason"), repo.unwrap_or_else(|| e.3.clone()));
+        }
+    }
+    let names = latest.iter().filter(|(_, v)| v.2 == 2 || v.2 == 5).map(|(k, _)| k.clone()).collect();
+    let repos = latest.into_iter().filter(|(_, v)| !v.3.is_empty()).map(|(k, v)| (k, v.3)).collect();
+    Ok(FrontendState { user: Some(UserInstalled { names, inverted: false }), repos })
+}
+
+/// yum's yumdb: <letter>/<pkgid>-<name>-<version>-<release>-<arch>/{reason,from_repo}
+pub fn yumdb_state(dir: &Path) -> FrontendState {
+    let mut st = FrontendState { user: Some(UserInstalled::default()), repos: HashMap::new() };
+    for letter in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        for e in std::fs::read_dir(letter.path()).into_iter().flatten().flatten() {
+            let n = e.file_name().to_string_lossy().into_owned();
+            // Drop the 40-hex pkgid, then split name-version-release-arch from the right.
+            let rest = n.split_once('-').map(|x| x.1).unwrap_or(&n);
+            let mut it = rest.rsplitn(4, '-');
+            let (arch, _rel, _ver, name) = (it.next().unwrap_or(""), it.next(), it.next(), it.next().unwrap_or(""));
+            let na = format!("{name}.{arch}");
+            if read_text_opt(e.path().join("reason")).map(|r| r.trim() == "user").unwrap_or(false) {
+                st.user.as_mut().expect("set").names.insert(na.clone());
+            }
+            if let Some(repo) = read_text_opt(e.path().join("from_repo")) {
+                st.repos.insert(na, repo.trim().to_string());
+            }
+        }
+    }
+    st
+}
+
+/// rpmvercmp: compare version strings the way rpm does (alpha vs numeric
+/// segments, '~' sorts before everything, '^' after the base version).
+pub fn rpmvercmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering::*;
+    let (mut a, mut b) = (a.as_bytes(), b.as_bytes());
+    let sep = |c: u8| !c.is_ascii_alphanumeric() && c != b'~' && c != b'^';
+    loop {
+        while !a.is_empty() && sep(a[0]) {
+            a = &a[1..];
+        }
+        while !b.is_empty() && sep(b[0]) {
+            b = &b[1..];
+        }
+        match (a.first(), b.first()) {
+            (Some(b'~'), Some(b'~')) => {
+                a = &a[1..];
+                b = &b[1..];
+                continue;
+            }
+            (Some(b'~'), _) => return Less,
+            (_, Some(b'~')) => return Greater,
+            (Some(b'^'), Some(b'^')) => {
+                a = &a[1..];
+                b = &b[1..];
+                continue;
+            }
+            (Some(b'^'), None) => return Greater,
+            (None, Some(b'^')) => return Less,
+            (Some(b'^'), _) => return Less,
+            (_, Some(b'^')) => return Greater,
+            (None, None) => return Equal,
+            (None, _) => return Less,
+            (_, None) => return Greater,
+            _ => {}
+        }
+        let numeric = a[0].is_ascii_digit();
+        let take = |s: &[u8]| {
+            s.iter().take_while(|c| if numeric { c.is_ascii_digit() } else { c.is_ascii_alphabetic() }).count()
+        };
+        let (la, lb) = (take(a), take(b));
+        if lb == 0 {
+            return if numeric { Greater } else { Less }; // numeric beats alpha
+        }
+        let (sa, sb) = (&a[..la], &b[..lb]);
+        let ord = if numeric {
+            let trim = |s: &[u8]| -> Vec<u8> { s.iter().skip_while(|c| **c == b'0').copied().collect() };
+            let (ta, tb) = (trim(sa), trim(sb));
+            ta.len().cmp(&tb.len()).then(ta.cmp(&tb))
+        } else {
+            sa.cmp(sb)
+        };
+        if ord != Equal {
+            return ord;
+        }
+        a = &a[la..];
+        b = &b[lb..];
+    }
+}
+
+/// Compare full EVRs: epoch, then version, then release.
+pub fn evr_cmp(a: &Package, b: &Package) -> std::cmp::Ordering {
+    let e = |p: &Package| p.epoch_str().and_then(|x| x.parse::<i64>().ok()).unwrap_or(0);
+    let split = |p: &Package| -> (String, String) {
+        p.version
+            .rsplit_once('-')
+            .map(|(v, r)| (v.to_string(), r.to_string()))
+            .unwrap_or((p.version.clone(), String::new()))
+    };
+    let ((va, ra), (vb, rb)) = (split(a), split(b));
+    e(a).cmp(&e(b)).then(rpmvercmp(&va, &vb)).then(rpmvercmp(&ra, &rb))
 }
 
 impl Manager for Rpm {
@@ -364,7 +491,7 @@ impl Manager for Rpm {
     /// Debian can have rpm installed as a tool; only claim the system if an
     /// RPM frontend is present too.
     fn available(&self) -> bool {
-        has("rpm") && self.frontend().is_some()
+        rpmdb::find(&self.root).is_some() && self.frontend().is_some()
     }
 
     fn key_of(&self, pkg: &Package, plat: &Platform) -> String {
@@ -380,8 +507,8 @@ impl Manager for Rpm {
     }
 
     fn installed(&self, _plat: &Platform) -> Result<Vec<Package>> {
-        let mut pkgs = self.qa()?;
-        let user = self.user_installed(self.frontend());
+        let mut pkgs = self.qa(&self.headers()?);
+        let user = self.frontend_state().user;
         for p in &mut pkgs {
             p.reason = Some(reason(p, &user));
         }
@@ -390,20 +517,25 @@ impl Manager for Rpm {
 
     fn capture(&self, plat: &Platform, opts: &Options) -> Result<Section> {
         let fe = self.frontend();
-        let mut pkgs = self.qa()?;
-        let user = self.user_installed(fe);
+        let headers = self.headers()?;
+        let mut pkgs = self.qa(&headers);
+        let FrontendState { user, repos: from_repo } = self.frontend_state();
         if user.is_none() {
             warn(&format!(
                 "{}: cannot tell user-installed from dependency packages; all are recorded as manual",
                 fe.unwrap_or("rpm")
             ));
         }
-        self.deps(&mut pkgs, plat);
-        let from_repo = self.installed_repos(fe);
+        self.deps(&mut pkgs, &headers, plat);
         for p in &mut pkgs {
             p.reason = Some(reason(p, &user));
+            // dnf5 reports an opaque hash for packages that came with the image.
+            let opaque = |r: &str| r.len() == 32 && r.chars().all(|c| c.is_ascii_hexdigit());
             if let Some(r) = from_repo.get(&format!("{}.{}", p.name, p.arch())) {
-                p.repositories = Some(vec![r.clone()]);
+                let r = r.trim_start_matches('@');
+                if !r.is_empty() && !["System", "<unknown>", "(none)", "installed"].contains(&r) && !opaque(r) {
+                    p.repositories = Some(vec![r.to_string()]);
+                }
             }
             if !opts.licenses {
                 p.licenses.clear();
@@ -411,9 +543,17 @@ impl Manager for Rpm {
         }
         pkgs.sort_by(|a, b| (&a.name, a.arch(), a.full_version()).cmp(&(&b.name, b.arch(), b.full_version())));
         Ok(Section {
-            tool: Some(format!("{} / {}", fe.unwrap_or("None"), run_ok(&["rpm", "--version"]).trim())),
+            tool: Some(format!(
+                "{} / RPM version {}",
+                fe.unwrap_or("None"),
+                headers
+                    .iter()
+                    .find(|h| h.string(rpmdb::NAME) == Some("rpm"))
+                    .and_then(|h| h.string(rpmdb::VERSION))
+                    .unwrap_or("unknown")
+            )),
             frontend: fe.map(String::from),
-            repositories: Some(parse_repo_files(&Self::repo_files())),
+            repositories: Some(parse_repo_files(&self.repo_files())),
             packages: pkgs,
             ..Default::default()
         })
@@ -424,7 +564,7 @@ impl Manager for Rpm {
         let fe = self.frontend();
         if opts.add_repos {
             let have: HashSet<String> =
-                parse_repo_files(&Self::repo_files()).iter().map(|r| vstr(r, "id").to_string()).collect();
+                parse_repo_files(&self.repo_files()).iter().map(|r| vstr(r, "id").to_string()).collect();
             let dir = if fe == Some("zypper") { "/etc/zypp/repos.d" } else { "/etc/yum.repos.d" };
             for r in section.repos() {
                 let id = vstr(r, "id");
@@ -487,15 +627,9 @@ impl Manager for Rpm {
                         .replace("{arch}", p.arch())
                         .replace("{name}", &p.name);
                     let dest = format!("{}/rpm/{}-{}.{}.rpm", opts.cache_dir, p.name, p.version, p.arch());
-                    let tag = self.payload_tag().unwrap_or("PAYLOADDIGEST").to_string();
                     plan.add(Step::fetch(
                         format!("{spec} is gone from the mirrors; fetching from Koji"),
-                        Fetch {
-                            urls: vec![url],
-                            dest: dest.clone(),
-                            sha256: None,
-                            rpm_payload: Some((tag, digest.clone())),
-                        },
+                        Fetch { urls: vec![url], dest: dest.clone(), sha256: None, rpm_payload: Some(digest.clone()) },
                     ));
                     local.push(dest);
                 } else if opts.best_effort {
@@ -509,7 +643,7 @@ impl Manager for Rpm {
             // dnf and zypper move to an exact NEVRA in either direction; only
             // legacy yum needs an explicit downgrade, decided by rpm itself.
             match current.get(&self.key_of(p, dst)) {
-                Some(cur) if fe == "yum" && rpm_vercmp(&evr(cur), &evr(p)) > 0 => downgrades.push(spec),
+                Some(cur) if fe == "yum" && evr_cmp(cur, p).is_gt() => downgrades.push(spec),
                 _ => installs.push(spec),
             }
         }
@@ -619,18 +753,105 @@ mod tests {
         std::fs::read_to_string(format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
     }
 
+    /// Build an rpm header blob: (tag, type, value bytes, count).
+    fn header(entries: &[(u32, u32, Vec<u8>, u32)]) -> Vec<u8> {
+        let (mut index, mut data) = (Vec::new(), Vec::new());
+        for (tag, typ, val, count) in entries {
+            index.extend_from_slice(&tag.to_be_bytes());
+            index.extend_from_slice(&typ.to_be_bytes());
+            index.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            index.extend_from_slice(&count.to_be_bytes());
+            data.extend_from_slice(val);
+        }
+        let mut b = (entries.len() as u32).to_be_bytes().to_vec();
+        b.extend_from_slice(&(data.len() as u32).to_be_bytes());
+        b.extend(index);
+        b.extend(data);
+        b
+    }
+    fn s(v: &str) -> (Vec<u8>, u32) {
+        (format!("{v}\0").into_bytes(), 1)
+    }
+
     #[test]
-    fn qa() {
-        let pkgs = parse_rpm_qa(&fixture("rpm-qa.txt"));
-        assert!(!pkgs.iter().any(|p| p.name == "gpg-pubkey"));
-        let ossl = pkgs.iter().find(|p| p.name == "openssl-libs").unwrap();
-        assert_eq!(ossl.epoch, Some(json!(1)));
-        assert_eq!(nevra(ossl), "openssl-libs-1:3.2.2-3.fc40.x86_64");
-        assert_eq!(ossl.source.as_ref().unwrap().name, "openssl");
-        assert!(ossl.payload_digest.is_none());
-        let bash = pkgs.iter().find(|p| p.name == "bash").unwrap();
-        assert_eq!(nevra(bash), "bash-5.2.26-3.fc40.x86_64");
-        assert!(bash.source.is_none());
+    fn packages_from_headers() {
+        let e = |tag, v: &str| {
+            let (b, c) = s(v);
+            (tag, 6, b, c)
+        };
+        let blob = header(&[
+            e(rpmdb::NAME, "openssl-libs"),
+            e(rpmdb::VERSION, "3.2.2"),
+            e(rpmdb::RELEASE, "3.fc40"),
+            (rpmdb::EPOCH, 4, 1u32.to_be_bytes().to_vec(), 1),
+            e(rpmdb::ARCH, "x86_64"),
+            e(rpmdb::SOURCERPM, "openssl-3.2.2-3.fc40.src.rpm"),
+            e(rpmdb::LICENSE, "Apache-2.0"),
+            (rpmdb::SIGMD5, 7, vec![0xca, 0xfe], 2),
+            (rpmdb::PROVIDENAME, 8, b"libssl.so.3\0openssl-libs\0".to_vec(), 2),
+        ]);
+        let h = rpmdb::parse_header(&blob).unwrap();
+        let p = package_from_header(&h).unwrap();
+        assert_eq!(nevra(&p), "openssl-libs-1:3.2.2-3.fc40.x86_64");
+        assert_eq!(p.source.as_ref().unwrap().name, "openssl");
+        assert_eq!(p.sigmd5.as_deref(), Some("cafe"));
+        assert!(p.payload_digest.is_none());
+        assert_eq!(h.strings(rpmdb::PROVIDENAME), ["libssl.so.3", "openssl-libs"]);
+        let key = header(&[e(rpmdb::NAME, "gpg-pubkey"), e(rpmdb::VERSION, "a15b79cc")]);
+        assert!(package_from_header(&rpmdb::parse_header(&key).unwrap()).is_none());
+    }
+
+    #[test]
+    fn version_comparison() {
+        use std::cmp::Ordering::*;
+        for (a, b, want) in [
+            ("1.0", "1.0", Equal),
+            ("1.10", "1.9", Greater),
+            ("1.0~rc1", "1.0", Less),
+            ("1.0^git1", "1.0", Greater),
+            ("1.0a", "1.0", Greater),
+            ("1.0", "1.0.1", Less),
+            ("2.0", "10", Less),
+            ("1.0.010", "1.0.9", Greater),
+            ("a", "1", Less),
+            ("5.2", "5.2", Equal),
+        ] {
+            assert_eq!(rpmvercmp(a, b), want, "{a} vs {b}");
+        }
+        let mk = |v: &str, e: i64| {
+            let mut p = Package::new("x", v);
+            if e > 0 {
+                p.epoch = Some(json!(e));
+            }
+            p
+        };
+        // the review case: 1.0-2 must not count as newer than 1.0.1-1
+        assert!(evr_cmp(&mk("1.0-2", 0), &mk("1.0.1-1", 0)).is_lt());
+        assert!(evr_cmp(&mk("1.0-1", 1), &mk("9.0-1", 0)).is_gt());
+    }
+
+    #[test]
+    fn dnf5_state_files() {
+        let st = dnf5_state(&fixture("dnf5-packages.toml"), Some(&fixture("dnf5-nevras.toml")));
+        let user = st.user.unwrap();
+        assert!(user.names.contains("bash.aarch64"));
+        assert!(!user.names.contains("alternatives.aarch64"));
+        assert_eq!(st.repos["bash.aarch64"], "fedora");
+        assert_eq!(st.repos["alternatives.aarch64"], "f6ae26d2709140ec8807dba8ce4e3091");
+    }
+
+    #[test]
+    fn dnf4_history_with_wal() {
+        let st =
+            dnf4_state(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/dnf-history.sqlite"))).unwrap();
+        let user = st.user.unwrap().names;
+        assert!(user.contains("bash.x86_64"));
+        assert!(user.contains("jq.x86_64"));
+        assert!(user.contains("oniguruma.x86_64")); // reason change to user wins
+        assert!(!user.contains("tree.x86_64")); // failed transaction ignored
+        assert_eq!(st.repos["jq.x86_64"], "appstream");
+        assert_eq!(st.repos["oniguruma.x86_64"], "appstream"); // reason change keeps the install repo
+        assert_eq!(st.repos["bash.x86_64"], "baseos");
     }
 
     #[test]
@@ -684,5 +905,25 @@ mod tests {
         assert_eq!(reason(&p, &zyp(&["b"])), "manual");
         assert_eq!(reason(&p, &zyp(&[])), "manual"); // empty AutoInstalled
         assert_eq!(reason(&p, &None), "manual");
+    }
+}
+
+#[cfg(test)]
+mod real_db {
+    use super::*;
+
+    /// Prints frontend state for $MATSYA_ROOT; compared by hand against
+    /// sqlite3/dnf during development.
+    #[test]
+    #[ignore]
+    fn dump_frontend_state() {
+        let root = std::env::var("MATSYA_ROOT").unwrap();
+        let st = Rpm::at(Path::new(&root)).frontend_state();
+        let mut u: Vec<String> = st.user.map(|u| u.names.into_iter().collect()).unwrap_or_default();
+        u.sort();
+        let mut r: Vec<String> = st.repos.iter().map(|(k, v)| format!("{k} {v}")).collect();
+        r.sort();
+        std::fs::write(format!("{root}/matsya-user.txt"), u.join("\n") + "\n").unwrap();
+        std::fs::write(format!("{root}/matsya-repos.txt"), r.join("\n") + "\n").unwrap();
     }
 }

@@ -1,0 +1,11 @@
+Package: libcurl4
+Architecture: amd64
+Auto-Installed: 1
+
+Package: ca-certificates
+Architecture: amd64
+Auto-Installed: 1
+
+Package: curl
+Architecture: amd64
+Auto-Installed: 0

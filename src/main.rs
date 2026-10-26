@@ -6,6 +6,7 @@
 //! it, unchanged, somewhere else.
 
 mod diff;
+mod formats;
 mod lockfile;
 mod managers;
 mod model;

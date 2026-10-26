@@ -6,12 +6,12 @@ use std::path::Path;
 use serde_json::{json, Value};
 
 use super::{by_key, resolve_dependencies, Manager, Options};
+use crate::formats::read_text_decompressed;
 use crate::model::{vstr, vstrs, Package, Section, Source};
 use crate::plan::{Fetch, Plan, Step, Write};
 use crate::platform::Platform;
 use crate::util::{
-    compact_ts, has, parse_deb822, read_text, read_text_opt, rfc2822_to_iso, run, run_any, run_ok, sha256_file,
-    sha256_hex, warn, Result,
+    compact_ts, parse_deb822, read_text, read_text_opt, rfc2822_to_iso, sha256_file, sha256_hex, warn, Result,
 };
 
 pub fn deb_arch(canonical: &str) -> String {
@@ -28,19 +28,9 @@ pub fn deb_arch(canonical: &str) -> String {
     .to_string()
 }
 
-const DPKG_FIELDS: &[&str] = &[
-    "db:Status-Abbrev",
-    "Package",
-    "Architecture",
-    "Version",
-    "source:Package",
-    "source:Version",
-    "Essential",
-    "Priority",
-    "Pre-Depends",
-    "Depends",
-    "Provides",
-];
+pub const DPKG_DIR: &str = "/var/lib/dpkg";
+pub const LISTS_DIR: &str = "/var/lib/apt/lists";
+const EXTENDED_STATES: &str = "/var/lib/apt/extended_states";
 
 /// A dpkg package plus its raw relationship fields.
 pub struct DpkgEntry {
@@ -49,55 +39,138 @@ pub struct DpkgEntry {
     pub provides: Vec<String>,
 }
 
-/// Parse our tab separated dpkg-query output.
-/// Returns installed packages and warnings about broken ones.
-pub fn parse_dpkg_query(out: &str) -> (Vec<DpkgEntry>, Vec<String>) {
+/// Status stanzas from dpkg's database with the journal in `updates/`
+/// applied on top, as dpkg-query does, so the state after an interrupted
+/// dpkg run is read correctly.
+pub fn read_status(dir: &Path) -> Result<Vec<BTreeMap<String, String>>> {
+    let mut order: Vec<(String, String)> = Vec::new();
+    let mut by_key: HashMap<(String, String), BTreeMap<String, String>> = HashMap::new();
+    let mut add = |st: BTreeMap<String, String>| {
+        let key = (st.get("Package").cloned().unwrap_or_default(), st.get("Architecture").cloned().unwrap_or_default());
+        if key.0.is_empty() {
+            return;
+        }
+        if by_key.insert(key.clone(), st).is_none() {
+            order.push(key);
+        }
+    };
+    for st in parse_deb822(&read_text(dir.join("status"))?) {
+        add(st);
+    }
+    let mut updates: Vec<(u64, std::path::PathBuf)> = std::fs::read_dir(dir.join("updates"))
+        .map(|d| d.flatten().filter_map(|e| Some((e.file_name().to_str()?.parse().ok()?, e.path()))).collect())
+        .unwrap_or_default();
+    updates.sort();
+    for (_, path) in updates {
+        for st in parse_deb822(&read_text(&path).unwrap_or_default()) {
+            add(st);
+        }
+    }
+    Ok(order.into_iter().filter_map(|k| by_key.remove(&k)).collect())
+}
+
+/// "install ok installed" -> "ii " (dpkg-query's db:Status-Abbrev).
+pub fn status_abbrev(status: &str) -> String {
+    let w: Vec<&str> = status.split_whitespace().collect();
+    let want = match w.first().copied() {
+        Some("install") => 'i',
+        Some("hold") => 'h',
+        Some("deinstall") => 'r',
+        Some("purge") => 'p',
+        _ => 'u',
+    };
+    let flag = if w.get(1) == Some(&"reinstreq") { 'R' } else { ' ' };
+    let state = match w.get(2).copied() {
+        Some("installed") => 'i',
+        Some("config-files") => 'c',
+        Some("half-installed") => 'H',
+        Some("unpacked") => 'U',
+        Some("half-configured") => 'F',
+        Some("triggers-awaited") => 'W',
+        Some("triggers-pending") => 't',
+        _ => 'n',
+    };
+    format!("{want}{state}{flag}")
+}
+
+/// Installed packages from status stanzas, plus warnings about broken ones.
+pub fn parse_status(stanzas: &[BTreeMap<String, String>]) -> (Vec<DpkgEntry>, Vec<String>) {
     let mut pkgs = Vec::new();
     let mut problems = Vec::new();
-    for line in out.lines() {
-        let c: Vec<&str> = line.split('\t').collect();
-        if c.len() < DPKG_FIELDS.len() {
-            continue;
-        }
-        let (status, name, arch, version) = (c[0].trim(), c[1], c[2], c[3]);
-        let st: Vec<char> = status.chars().collect();
-        if st.len() < 2 {
-            continue;
-        }
-        // Abbrev is desired/state/error: "ii", "hi", "rc", "iU", "iF", "iH" ...
-        if st[1] != 'i' {
-            if "UFHWt".contains(st[1]) {
-                problems.push(format!("{name}:{arch} is in a broken dpkg state ({status}); it is not locked"));
+    for st in stanzas {
+        let g = |k: &str| st.get(k).map(String::as_str).unwrap_or("");
+        let (name, arch, version) = (g("Package"), g("Architecture"), g("Version"));
+        let status = status_abbrev(g("Status"));
+        let c: Vec<char> = status.chars().collect();
+        if c[1] != 'i' {
+            if "UFHWt".contains(c[1]) {
+                problems.push(format!("{name}:{arch} is in a broken dpkg state ({}); it is not locked", status.trim()));
             }
             continue;
         }
-        if st.get(2) == Some(&'R') {
+        if c[2] == 'R' {
             problems.push(format!("{name}:{arch} needs reinstallation; locked anyway"));
         }
         let mut p = Package::new(name, version);
         p.arch = Some(arch.into());
-        if st[0] == 'h' {
+        if c[0] == 'h' {
             p.held = Some(true);
         }
-        if c[6] == "yes" {
+        if g("Essential") == "yes" {
             p.essential = Some(true);
         }
-        if !c[7].is_empty() {
-            p.priority = Some(c[7].into());
+        if !g("Priority").is_empty() {
+            p.priority = Some(g("Priority").into());
         }
-        let (src, srcver) = (c[4], c[5]);
-        if !src.is_empty() && (src != name || srcver != version) {
-            p.source = Some(Source {
-                name: src.into(),
-                version: Some(if srcver.is_empty() { version } else { srcver }.into()),
-            });
+        // "Source: glibc (2.36-9)" or "Source: glibc"; defaults are the binary's own.
+        let src_field = g("Source");
+        let (src, srcver) = match src_field.split_once(" (") {
+            Some((n, v)) => (n.trim(), v.trim_end_matches(')').trim()),
+            None if !src_field.is_empty() => (src_field.trim(), version),
+            None => (name, version),
+        };
+        if src != name || srcver != version {
+            p.source = Some(Source { name: src.into(), version: Some(srcver.into()) });
         }
-        let rel: Vec<&str> = [c[8], c[9]].into_iter().filter(|x| !x.is_empty()).collect();
+        let rel: Vec<&str> = [g("Pre-Depends"), g("Depends")].into_iter().filter(|x| !x.is_empty()).collect();
         let requires = parse_relations(&rel.join(", "));
-        let provides = parse_relations(c[10]).into_iter().map(|g| g[0].clone()).collect();
+        let provides = parse_relations(g("Provides")).into_iter().map(|g| g[0].clone()).collect();
         pkgs.push(DpkgEntry { pkg: p, requires, provides });
     }
     (pkgs, problems)
+}
+
+/// Auto-installed (name, arch) pairs from apt's extended_states.
+pub fn parse_extended_states(text: &str) -> HashSet<(String, String)> {
+    parse_deb822(text)
+        .into_iter()
+        .filter(|st| st.get("Auto-Installed").map(String::as_str) == Some("1"))
+        .filter_map(|st| Some((st.get("Package")?.clone(), st.get("Architecture").cloned().unwrap_or_default())))
+        .collect()
+}
+
+/// dpkg's native architecture (the arch of dpkg itself) and the foreign
+/// architectures enabled with `dpkg --add-architecture`.
+pub fn dpkg_arches(dir: &Path, stanzas: Option<&[BTreeMap<String, String>]>) -> (Option<String>, Vec<String>) {
+    let list: Vec<String> =
+        read_text_opt(dir.join("arch")).unwrap_or_default().split_whitespace().map(String::from).collect();
+    let from_status = |sts: &[BTreeMap<String, String>]| {
+        sts.iter()
+            .find(|s| {
+                s.get("Package").map(String::as_str) == Some("dpkg")
+                    && status_abbrev(s.get("Status").map(String::as_str).unwrap_or("")).as_bytes()[1] == b'i'
+            })
+            .and_then(|s| s.get("Architecture").cloned())
+    };
+    let native = match stanzas {
+        Some(sts) => from_status(sts),
+        None => read_status(dir).ok().and_then(|sts| from_status(&sts)),
+    }
+    .or_else(|| list.first().cloned());
+    let mut foreign: Vec<String> = list.into_iter().filter(|a| Some(a) != native.as_ref()).collect();
+    foreign.sort();
+    foreign.dedup();
+    (native, foreign)
 }
 
 /// "a (>= 1) | b:any, c [amd64], d <!nocheck>" -> [[a, b], [c], [d]]
@@ -186,35 +259,68 @@ pub fn scan_packages_index(text: &str, wanted: &HashSet<Triple>) -> HashMap<Trip
     found
 }
 
-/// (uri, archive-or-codename, component) -> release attributes from
-/// `apt-cache policy` (o=Origin, l=Label, a=Suite, n=Codename, v=Version).
-pub fn parse_policy(out: &str) -> HashMap<(String, String, String), BTreeMap<String, String>> {
-    let mut res = HashMap::new();
-    let mut last_uri: Option<String> = None;
-    for line in out.lines() {
-        let s = line.trim();
-        let mut parts = s.split_whitespace();
-        if let (Some(first), Some(second)) = (parts.next(), parts.next()) {
-            if first.trim_start_matches('-').chars().all(|c| c.is_ascii_digit()) && second.contains("://") {
-                last_uri = Some(second.trim_end_matches('/').to_string());
-                continue;
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ReleaseInfo {
+    pub origin: String,
+    pub label: String,
+    pub suite: String,
+    pub codename: String,
+    pub version: String,
+    /// ISO 8601 publication time.
+    pub date: String,
+}
+
+/// The header of an (In)Release file, ignoring the PGP armor around it.
+pub fn parse_release(text: &str) -> ReleaseInfo {
+    let mut body = String::new();
+    let mut lines = text.lines();
+    if text.starts_with("-----BEGIN PGP SIGNED MESSAGE-----") {
+        for l in lines.by_ref() {
+            if l.trim().is_empty() {
+                break; // armor headers end at the first blank line
             }
-        }
-        if let (Some(rest), Some(uri)) = (s.strip_prefix("release "), &last_uri) {
-            let attrs: BTreeMap<String, String> = rest
-                .split(',')
-                .filter_map(|kv| kv.split_once('=').map(|(k, v)| (k.trim().to_string(), v.trim().to_string())))
-                .collect();
-            let comp = attrs.get("c").cloned().unwrap_or_default();
-            let suites: BTreeSet<String> =
-                ["a", "n"].iter().filter_map(|k| attrs.get(*k)).filter(|s| !s.is_empty()).cloned().collect();
-            for suite in suites {
-                res.insert((uri.clone(), suite, comp.clone()), attrs.clone());
-            }
-            last_uri = None;
         }
     }
-    res
+    for l in lines {
+        if l.starts_with("-----BEGIN PGP SIGNATURE-----") {
+            break;
+        }
+        body.push_str(l);
+        body.push('\n');
+    }
+    let st = parse_deb822(&body).into_iter().next().unwrap_or_default();
+    let g = |k: &str| st.get(k).map(|v| v.lines().next().unwrap_or("").trim().to_string()).unwrap_or_default();
+    ReleaseInfo {
+        origin: g("Origin"),
+        label: g("Label"),
+        suite: g("Suite"),
+        codename: g("Codename"),
+        version: g("Version"),
+        date: rfc2822_to_iso(&g("Date")).unwrap_or_default(),
+    }
+}
+
+/// apt's URItoFileName: drop scheme and credentials, %-quote special
+/// characters, turn '/' into '_'. This is how files in
+/// /var/lib/apt/lists are named.
+pub fn uri_to_filename(uri: &str) -> String {
+    let rest = uri.split_once("://").map(|x| x.1).unwrap_or(uri);
+    let rest = match rest.split_once('/') {
+        Some((host, path)) => format!("{}/{path}", host.rsplit_once('@').map(|x| x.1).unwrap_or(host)),
+        None => rest.rsplit_once('@').map(|x| x.1).unwrap_or(rest).to_string(),
+    };
+    let mut out = String::new();
+    for b in rest.bytes() {
+        let c = b as char;
+        if b <= 0x20 || b >= 0x7f || "\\|{}[]<>\"^~_=!@#$%^&*".contains(c) {
+            out.push_str(&format!("%{b:02x}"));
+        } else if c == '/' {
+            out.push('_');
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -296,24 +402,6 @@ pub fn dep5_licenses(text: &str) -> Vec<String> {
     lic.into_iter().collect()
 }
 
-/// Date of the Release file next to a Packages index, as ISO 8601.
-pub fn release_date(packages_file: &str, suite: &str) -> Option<String> {
-    let idx = packages_file.find("_dists_")?; // flat repositories have none
-    let base = format!("{}_dists_{}", &packages_file[..idx], suite.replace('/', "_"));
-    for cand in [format!("{base}_InRelease"), format!("{base}_Release")] {
-        let Some(text) = read_text_opt(&cand) else { continue };
-        for line in text.lines() {
-            if let Some(d) = line.strip_prefix("Date:") {
-                return rfc2822_to_iso(d.trim());
-            }
-            if line.starts_with("MD5Sum:") || line.starts_with("SHA256:") || line.starts_with("SHA1:") {
-                break; // past the header (InRelease starts with a PGP armor header)
-            }
-        }
-    }
-    None
-}
-
 #[derive(Debug, Clone)]
 struct Target {
     file: String,
@@ -321,53 +409,102 @@ struct Target {
     suite: String,
     component: String,
     arch: String,
+    release: ReleaseInfo,
 }
 
 pub struct Apt;
 
+fn native_or_empty(arches: &[String]) -> String {
+    arches.first().cloned().unwrap_or_default()
+}
+
 impl Apt {
     fn dpkg(&self) -> Result<(Vec<DpkgEntry>, Vec<String>)> {
-        let fmt = DPKG_FIELDS.iter().map(|f| format!("${{{f}}}")).collect::<Vec<_>>().join("\t") + "\n";
-        Ok(parse_dpkg_query(&run(&["dpkg-query", "-W", "-f", &fmt])?))
+        Ok(parse_status(&read_status(Path::new(DPKG_DIR))?))
     }
 
-    fn manual(&self) -> Option<HashSet<String>> {
-        if !has("apt-mark") {
-            return None;
+    /// Auto-installed marks, or None when apt is absent (dpkg-only system).
+    fn auto_marks(&self) -> Option<HashSet<(String, String)>> {
+        match read_text_opt(EXTENDED_STATES) {
+            Some(t) => Some(parse_extended_states(&t)),
+            None if Path::new("/var/lib/apt").is_dir() => Some(HashSet::new()),
+            None => None,
         }
-        Some(run_ok(&["apt-mark", "showmanual"]).split_whitespace().map(String::from).collect())
     }
 
+    /// Package indexes apt has downloaded, derived from the configured
+    /// sources and apt's own list file naming.
     fn index_targets(&self) -> Vec<Target> {
-        if !has("apt-get") {
-            return vec![];
+        let mut files = Vec::new();
+        let mut paths = vec!["/etc/apt/sources.list".to_string()];
+        let mut extra: Vec<String> = std::fs::read_dir("/etc/apt/sources.list.d")
+            .map(|d| d.flatten().map(|e| e.path().to_string_lossy().into_owned()).collect())
+            .unwrap_or_default();
+        extra.retain(|p| p.ends_with(".list") || p.ends_with(".sources"));
+        extra.sort();
+        paths.extend(extra);
+        for p in paths {
+            if let Some(t) = read_text_opt(&p) {
+                files.push((p, t));
+            }
         }
-        let fmt = "$(FILENAME)\t$(REPO_URI)\t$(RELEASE)\t$(COMPONENT)\t$(ARCHITECTURE)\t$(CREATED_BY)";
-        run_ok(&["apt-get", "indextargets", "--format", fmt])
-            .lines()
-            .filter_map(|l| {
-                let c: Vec<&str> = l.split('\t').collect();
-                if c.len() != 6 || c[5] != "Packages" || !Path::new(c[0]).exists() {
-                    return None;
+        let (native, foreign) = dpkg_arches(Path::new(DPKG_DIR), None);
+        let mut arches: Vec<String> = native.into_iter().collect();
+        arches.extend(foreign);
+        arches.push("all".into());
+        let lists = Path::new(LISTS_DIR);
+        let find = |base: &str| -> Option<String> {
+            let name = uri_to_filename(base);
+            ["", ".lz4", ".gz", ".xz", ".zst"]
+                .iter()
+                .map(|ext| lists.join(format!("{name}{ext}")))
+                .find(|p| p.is_file())
+                .map(|p| p.to_string_lossy().into_owned())
+        };
+        let mut out: Vec<Target> = Vec::new();
+        let mut seen = HashSet::new();
+        for src in parse_sources(&files) {
+            let flat = src.suite.ends_with('/');
+            let dist = if flat {
+                format!("{}/{}", src.uri, src.suite.trim_start_matches("./"))
+            } else {
+                format!("{}/dists/{}/", src.uri, src.suite)
+            };
+            let release = ["InRelease", "Release"]
+                .iter()
+                .find_map(|r| read_text_opt(lists.join(uri_to_filename(&format!("{dist}{r}")))))
+                .map(|t| parse_release(&t))
+                .unwrap_or_default();
+            let mut candidates: Vec<(String, String, String)> = Vec::new();
+            if flat {
+                candidates.push((format!("{dist}Packages"), String::new(), native_or_empty(&arches)));
+            } else {
+                for comp in &src.components {
+                    for arch in &arches {
+                        candidates.push((format!("{dist}{comp}/binary-{arch}/Packages"), comp.clone(), arch.clone()));
+                    }
                 }
-                Some(Target {
-                    file: c[0].into(),
-                    uri: c[1].trim_end_matches('/').into(),
-                    suite: c[2].into(),
-                    component: c[3].into(),
-                    arch: c[4].into(),
-                })
-            })
-            .collect()
+            }
+            for (base, component, arch) in candidates {
+                if let Some(file) = find(&base) {
+                    if seen.insert(file.clone()) {
+                        out.push(Target {
+                            file,
+                            uri: src.uri.clone(),
+                            suite: src.suite.clone(),
+                            component,
+                            arch,
+                            release: release.clone(),
+                        });
+                    }
+                }
+            }
+        }
+        out
     }
 
     fn cat_index(&self, path: &str) -> String {
-        let helper = "/usr/lib/apt/apt-helper";
-        if Path::new(helper).exists() {
-            run_any(&[helper, "cat-file", path])
-        } else {
-            read_text(path).unwrap_or_default()
-        }
+        read_text_decompressed(path).unwrap_or_default()
     }
 
     /// (name, arch, version) -> (hit, indexes it was found in)
@@ -385,17 +522,14 @@ impl Apt {
     }
 
     fn repo_records(&self, targets: &[Target], opts: &Options) -> (Vec<Value>, Vec<String>) {
-        let policy = if has("apt-cache") { parse_policy(&run_ok(&["apt-cache", "policy"])) } else { HashMap::new() };
         let mut files = Vec::new();
         let mut paths = vec!["/etc/apt/sources.list".to_string()];
-        for ext in ["list", "sources"] {
-            let mut v: Vec<String> = std::fs::read_dir("/etc/apt/sources.list.d")
-                .map(|d| d.filter_map(|e| e.ok()).map(|e| e.path().to_string_lossy().into_owned()).collect())
-                .unwrap_or_default();
-            v.retain(|p| p.ends_with(&format!(".{ext}")));
-            v.sort();
-            paths.extend(v);
-        }
+        let mut extra: Vec<String> = std::fs::read_dir("/etc/apt/sources.list.d")
+            .map(|d| d.flatten().map(|e| e.path().to_string_lossy().into_owned()).collect())
+            .unwrap_or_default();
+        extra.retain(|p| p.ends_with(".list") || p.ends_with(".sources"));
+        extra.sort();
+        paths.extend(extra);
         for p in paths {
             if let Some(t) = read_text_opt(&p) {
                 files.push((p, t));
@@ -405,10 +539,10 @@ impl Apt {
         let mut repos: BTreeMap<String, Value> = BTreeMap::new();
         let mut ids = Vec::with_capacity(targets.len());
         for t in targets {
-            let rel = policy.get(&(t.uri.clone(), t.suite.clone(), t.component.clone())).cloned().unwrap_or_default();
-            let origin = rel.get("o").cloned().unwrap_or_default();
-            let rid = if !origin.is_empty() {
-                format!("{origin}:{}/{}", rel.get("a").filter(|s| !s.is_empty()).unwrap_or(&t.suite), t.component)
+            let rel = &t.release;
+            let rid = if !rel.origin.is_empty() {
+                let suite = if rel.suite.is_empty() { &t.suite } else { &rel.suite };
+                format!("{}:{suite}/{}", rel.origin, t.component)
             } else {
                 let host = t.uri.split_once("://").map(|x| x.1).unwrap_or(&t.uri);
                 format!("{host}:{}/{}", t.suite, t.component)
@@ -424,15 +558,17 @@ impl Apt {
                 continue;
             }
             let mut r = json!({"id": rid, "uris": [t.uri], "suite": t.suite, "component": t.component, "architectures": [t.arch]});
-            for (k, field) in [("o", "origin"), ("l", "label"), ("n", "codename"), ("v", "version")] {
-                if let Some(v) = rel.get(k).filter(|v| !v.is_empty()) {
+            for (v, field) in
+                [(&rel.origin, "origin"), (&rel.label, "label"), (&rel.codename, "codename"), (&rel.version, "version")]
+            {
+                if !v.is_empty() {
                     r[field] = json!(v);
                 }
             }
-            if let Some(d) = release_date(&t.file, &t.suite) {
+            if !rel.date.is_empty() {
                 // The archive's own publication time: the right snapshot to ask
                 // for, independent of when (or with which clock) we ran.
-                r["date"] = json!(d);
+                r["date"] = json!(rel.date);
             }
             if let Some(src) = sources.iter().find(|s| s.uri == t.uri && s.suite == t.suite) {
                 if src.trusted {
@@ -532,14 +668,28 @@ impl Apt {
     }
 }
 
-fn reason(p: &Package, manual: &Option<HashSet<String>>, native: &str) -> String {
-    let Some(m) = manual else { return "manual".into() };
-    let foreign = !matches!(p.arch(), a if a == native || a == "all");
-    if m.contains(&p.name) || (foreign && m.contains(&format!("{}:{}", p.name, p.arch()))) {
-        "manual".into()
-    } else {
+fn reason(p: &Package, auto: &Option<HashSet<(String, String)>>, native: &str) -> String {
+    let Some(auto) = auto else { return "manual".into() };
+    // apt records Architecture: all packages under the native arch.
+    let arch = if p.arch() == "all" { native } else { p.arch() };
+    if auto.contains(&(p.name.clone(), arch.to_string())) || auto.contains(&(p.name.clone(), p.arch().to_string())) {
         "dependency".into()
+    } else {
+        "manual".into()
     }
+}
+
+/// The package whose file list contains `path` (dpkg -S).
+fn dpkg_owner(path: &str) -> Option<String> {
+    let dir = Path::new(DPKG_DIR).join("info");
+    for e in std::fs::read_dir(dir).ok()?.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        let Some(pkg) = name.strip_suffix(".list") else { continue };
+        if read_text_opt(e.path()).is_some_and(|t| t.lines().any(|l| l == path)) {
+            return Some(pkg.split(':').next().unwrap_or(pkg).to_string());
+        }
+    }
+    None
 }
 
 fn keyring(signed_by: &str, opts: &Options) -> Option<Value> {
@@ -563,8 +713,7 @@ fn keyring(signed_by: &str, opts: &Options) -> Option<Value> {
         return Some(json!({"fingerprints": s.split_whitespace().collect::<Vec<_>>()}));
     }
     let mut rec = json!({"path": path, "sha256": sha256_file(path).ok()?});
-    let owned = if has("dpkg") { run_ok(&["dpkg", "-S", path]) } else { String::new() };
-    if let Some(pkg) = owned.trim().split(':').next().filter(|x| !x.is_empty()) {
+    if let Some(pkg) = dpkg_owner(path) {
         rec["package"] = json!(pkg);
     } else if opts.embed_keys {
         // Third-party key: embed it so another machine can trust the same repo.
@@ -579,9 +728,16 @@ fn licenses_for(name: &str) -> Vec<String> {
     read_text_opt(format!("/usr/share/doc/{name}/copyright")).map(|t| dep5_licenses(&t)).unwrap_or_default()
 }
 
-fn tool_version() -> String {
-    let out = if has("apt-get") { run_ok(&["apt-get", "--version"]) } else { run_ok(&["dpkg", "--version"]) };
-    out.lines().next().unwrap_or("").trim().to_string()
+/// What `apt-get --version` / `dpkg --version` print, from the status db.
+fn tool_version(stanzas: &[BTreeMap<String, String>], native: &str) -> String {
+    let ver = |n: &str| {
+        stanzas.iter().find(|s| s.get("Package").map(String::as_str) == Some(n)).and_then(|s| s.get("Version").cloned())
+    };
+    match (ver("apt"), ver("dpkg")) {
+        (Some(v), _) => format!("apt {v} ({native})"),
+        (None, Some(v)) => format!("Debian 'dpkg' package management program version {v} ({native})."),
+        _ => String::new(),
+    }
 }
 
 /// Snapshot URLs for a package, newest knowledge first: the repository's
@@ -628,7 +784,7 @@ impl Manager for Apt {
     }
 
     fn available(&self) -> bool {
-        has("dpkg-query")
+        Path::new(DPKG_DIR).join("status").is_file()
     }
 
     fn key_of(&self, pkg: &Package, plat: &Platform) -> String {
@@ -643,7 +799,7 @@ impl Manager for Apt {
 
     fn installed(&self, plat: &Platform) -> Result<Vec<Package>> {
         let (entries, _) = self.dpkg()?;
-        let manual = self.manual();
+        let manual = self.auto_marks();
         let native = deb_arch(plat.arch());
         Ok(entries
             .into_iter()
@@ -656,13 +812,14 @@ impl Manager for Apt {
     }
 
     fn capture(&self, plat: &Platform, opts: &Options) -> Result<Section> {
-        let (entries, problems) = self.dpkg()?;
+        let stanzas = read_status(Path::new(DPKG_DIR))?;
+        let (entries, problems) = parse_status(&stanzas);
         for m in problems {
             warn(&m);
         }
-        let manual = self.manual();
+        let manual = self.auto_marks();
         if manual.is_none() {
-            warn("apt-mark not found; every package is recorded as manually installed");
+            warn("apt is not installed; every package is recorded as manually installed");
         }
         let native = deb_arch(plat.arch());
         let mut requires = HashMap::new();
@@ -717,14 +874,9 @@ impl Manager for Apt {
         }
         pkgs.sort_by(|a, b| (&a.name, a.arch()).cmp(&(&b.name, b.arch())));
         Ok(Section {
-            tool: Some(tool_version()),
+            tool: Some(tool_version(&stanzas, &native)),
             repositories: Some(repos),
-            foreign_architectures: Some({
-                let mut v: Vec<String> =
-                    run_ok(&["dpkg", "--print-foreign-architectures"]).split_whitespace().map(String::from).collect();
-                v.sort();
-                v
-            }),
+            foreign_architectures: Some(dpkg_arches(Path::new(DPKG_DIR), Some(&stanzas)).1),
             packages: pkgs,
             ..Default::default()
         })
@@ -739,8 +891,7 @@ impl Manager for Apt {
             .map(|p| p.arch().to_string())
             .filter(|a| a != &native && a != "all" && !a.is_empty())
             .collect();
-        let have: HashSet<String> =
-            run_ok(&["dpkg", "--print-foreign-architectures"]).split_whitespace().map(String::from).collect();
+        let have: HashSet<String> = dpkg_arches(Path::new(DPKG_DIR), None).1.into_iter().collect();
         for a in need {
             if !have.contains(&a) {
                 plan.add(Step::cmd(format!("enable multiarch for {a}"), ["dpkg", "--add-architecture", &a]));
@@ -909,7 +1060,7 @@ mod tests {
 
     #[test]
     fn dpkg_states() {
-        let (entries, problems) = parse_dpkg_query(&fixture("dpkg-query.txt"));
+        let (entries, problems) = parse_status(&parse_deb822(&fixture("dpkg-status")));
         let names: Vec<(String, String)> = entries.iter().map(|e| (e.pkg.name.clone(), e.pkg.arch().into())).collect();
         assert!(names.contains(&("libc6".into(), "i386".into())));
         assert!(!names.iter().any(|(n, _)| n == "oldpkg" || n == "halfpkg"));
@@ -931,7 +1082,7 @@ mod tests {
 
     #[test]
     fn dependency_resolution() {
-        let (entries, _) = parse_dpkg_query(&fixture("dpkg-query.txt"));
+        let (entries, _) = parse_status(&parse_deb822(&fixture("dpkg-status")));
         let plat = deb12();
         let a = Apt;
         let keys: Vec<String> = entries.iter().map(|e| a.key_of(&e.pkg, &plat)).collect();
@@ -974,17 +1125,49 @@ mod tests {
     }
 
     #[test]
-    fn policy() {
-        let pol = parse_policy(&fixture("apt-policy.txt"));
+    fn release_files() {
+        let r = parse_release(&fixture("InRelease"));
         assert_eq!(
-            pol[&("http://deb.debian.org/debian-security".into(), "bookworm-security".into(), "main".into())]["o"],
-            "Debian"
+            (r.origin.as_str(), r.suite.as_str(), r.codename.as_str()),
+            ("Debian", "stable-security", "bookworm-security")
         );
-        assert!(pol.contains_key(&("http://deb.debian.org/debian".into(), "stable".into(), "main".into())));
+        assert_eq!(r.label, "Debian-Security");
+        assert_eq!(r.date, "2024-10-26T10:00:00Z");
+    }
+
+    #[test]
+    fn list_file_names() {
         assert_eq!(
-            pol[&("https://download.docker.com/linux/debian".into(), "bookworm".into(), "stable".into())]["o"],
-            "Docker"
+            uri_to_filename("http://eu-west-2.ec2.archive.ubuntu.com/ubuntu/dists/resolute/main/binary-arm64/Packages"),
+            "eu-west-2.ec2.archive.ubuntu.com_ubuntu_dists_resolute_main_binary-arm64_Packages"
         );
+        assert_eq!(
+            uri_to_filename("https://user:pw@example.com/a_b~c/dists/x/InRelease"),
+            "example.com_a%5fb%7ec_dists_x_InRelease"
+        );
+        assert_eq!(uri_to_filename("http://host:8080/repo/./Packages"), "host:8080_repo_._Packages");
+    }
+
+    #[test]
+    fn extended_states() {
+        let auto = Some(parse_extended_states(&fixture("extended_states")));
+        let mk = |n: &str, a: &str| {
+            let mut p = Package::new(n, "1");
+            p.arch = Some(a.into());
+            p
+        };
+        assert_eq!(reason(&mk("libcurl4", "amd64"), &auto, "amd64"), "dependency");
+        assert_eq!(reason(&mk("ca-certificates", "all"), &auto, "amd64"), "dependency"); // recorded under the native arch
+        assert_eq!(reason(&mk("curl", "amd64"), &auto, "amd64"), "manual");
+        assert_eq!(reason(&mk("curl", "amd64"), &None, "amd64"), "manual");
+    }
+
+    #[test]
+    fn status_abbreviations() {
+        assert_eq!(status_abbrev("install ok installed"), "ii ");
+        assert_eq!(status_abbrev("hold ok installed"), "hi ");
+        assert_eq!(status_abbrev("deinstall ok config-files"), "rc ");
+        assert_eq!(status_abbrev("install reinstreq half-installed"), "iHR");
     }
 
     #[test]
