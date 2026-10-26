@@ -1,0 +1,4 @@
+# Docker
+deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable
+deb-src http://example.com/src bookworm main
+deb [trusted=yes] http://insecure.example.com/repo ./

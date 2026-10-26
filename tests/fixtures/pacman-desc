@@ -1,0 +1,40 @@
+%NAME%
+curl
+
+%VERSION%
+1:8.10.1-1
+
+%BASE%
+curl
+
+%DESC%
+command line tool and library for transferring data with URLs
+
+%ARCH%
+x86_64
+
+%BUILDDATE%
+1726669990
+
+%PACKAGER%
+Christian Hesse <eworm@archlinux.org>
+
+%REASON%
+1
+
+%LICENSE%
+MIT
+
+%VALIDATION%
+pgp
+
+%DEPENDS%
+ca-certificates
+krb5
+libcurl.so=4-64
+glibc>=2.38
+sh: for curl-config
+
+%PROVIDES%
+libcurl.so=4-64
+

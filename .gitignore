@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+out/
+.venv/
+*.cdx.json
+*.spdx.json
+/syslock.lock.json

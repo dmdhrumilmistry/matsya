@@ -1,0 +1,25 @@
+Package: curl
+Version: 7.88.1-10+deb12u5
+Architecture: amd64
+Maintainer: Alessandro Ghedini <ghedo@debian.org>
+Depends: libc6 (>= 2.34), libcurl4 (= 7.88.1-10+deb12u5)
+Description: command line tool for transferring data with URL syntax
+Description-md5: 2f2f9a4f9b5e4c1f1c2f6c4d1d6a8f1b
+Filename: pool/main/c/curl/curl_7.88.1-10+deb12u5_amd64.deb
+Size: 316176
+SHA256: 0f4c6f5f0b3e8c8d23fbaa9b0c6c7b6e4b0d4c8ec1b6f1f4b3c0c9d4b8a7e6f5
+
+Package: curl
+Version: 7.88.1-10+deb12u4
+Architecture: amd64
+Filename: pool/main/c/curl/curl_7.88.1-10+deb12u4_amd64.deb
+Size: 316000
+SHA256: 1111111111111111111111111111111111111111111111111111111111111111
+
+Package: ca-certificates
+Version: 20230311
+Architecture: all
+Multi-Arch: foreign
+Filename: pool/main/c/ca-certificates/ca-certificates_20230311_all.deb
+Size: 153316
+SHA256: 5308b9bd88eebe2a48be3168cb3d87677aaec5da9c63ad0cf561a29b8219115c

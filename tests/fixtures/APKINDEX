@@ -1,0 +1,9 @@
+C:Q1xyz=
+P:curl
+V:8.9.1-r0
+A:x86_64
+
+C:Q1new=
+P:busybox
+V:1.36.1-r30
+A:x86_64

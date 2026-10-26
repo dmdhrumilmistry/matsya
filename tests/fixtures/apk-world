@@ -1,0 +1,4 @@
+busybox
+curl=8.9.1-r0
+jq@edge
+!foo

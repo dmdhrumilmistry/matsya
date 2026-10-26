@@ -1,0 +1,113 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: unit (python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { python: "3.8", os: ubuntu-22.04 }
+          - { python: "3.10", os: ubuntu-latest }
+          - { python: "3.12", os: ubuntu-latest, schemas: true }
+          - { python: "3.13", os: ubuntu-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install SBOM schema validators
+        if: matrix.schemas
+        run: pip install "cyclonedx-python-lib[json-validation]" spdx-tools
+      - run: PYTHONPATH=src python -W error::DeprecationWarning -m unittest discover -s tests -v
+      - name: Validate SBOMs generated from this runner
+        if: matrix.schemas
+        run: |
+          sudo apt-get update -q
+          PYTHONPATH=src python -m syslock lock
+          PYTHONPATH=src python -m syslock sbom -o runner.cdx.json
+          PYTHONPATH=src python -m syslock sbom --format spdx -o runner.spdx.json
+          python ci/validate_sbom.py runner.cdx.json runner.spdx.json
+      - name: Build wheel
+        if: matrix.schemas
+        run: pip install build && python -m build && pip install dist/*.whl && syslock --version
+
+  distro:
+    name: ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - debian:12
+          - debian:trixie
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - fedora:latest
+          - rockylinux/rockylinux:9
+          - opensuse/tumbleweed
+          - alpine:latest
+          - archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture, drift, repair
+        run: |
+          mkdir -p out
+          docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh capture /src/out/env.lock.json
+      - name: Restore on a fresh container
+        run: docker run --rm -v "$PWD:/src" ${{ matrix.image }} sh /src/ci/inside.sh restore /src/out/env.lock.json
+      - name: Sanitize artifact name
+        id: name
+        run: echo "name=$(echo '${{ matrix.image }}' | tr ':/' '--')" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lock-${{ steps.name.outputs.name }}
+          path: out/
+
+  homebrew:
+    name: homebrew (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Homebrew on Linux
+        if: runner.os == 'Linux'
+        run: |
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+      - name: Lock, drift, repair
+        env:
+          PYTHONPATH: src
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          set -x
+          brew install tree
+          python3 -m syslock lock -m brew -f brew.lock.json
+          python3 -m syslock check -m brew -f brew.lock.json
+          python3 -m syslock sbom -f brew.lock.json -o brew.cdx.json
+          python3 -m syslock export --format brewfile -f brew.lock.json
+          brew uninstall tree
+          if python3 -m syslock check -m brew -f brew.lock.json; then echo "drift not detected"; exit 1; fi
+          python3 -m syslock apply -m brew -f brew.lock.json --dry-run --no-refresh
+          python3 -m syslock apply -m brew -f brew.lock.json --yes --no-refresh
+          python3 -m syslock check -m brew -f brew.lock.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brew-${{ matrix.os }}
+          path: brew.*

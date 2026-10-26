@@ -1,0 +1,13 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: curl
+
+Files: *
+Copyright: 1996-2023, Daniel Stenberg
+License: curl
+
+Files: debian/*
+Copyright: 2006 Domenico Andreoli
+License: MIT
+
+License: curl
+ All rights reserved.

@@ -1,0 +1,221 @@
+{
+ "formulae": [
+  {
+   "name": "jq",
+   "full_name": "jq",
+   "tap": "homebrew/core",
+   "versions": {
+    "stable": "1.8.2",
+    "head": "HEAD",
+    "bottle": true
+   },
+   "revision": 0,
+   "license": "MIT",
+   "bottle": {
+    "stable": {
+     "rebuild": 1,
+     "root_url": "https://ghcr.io/v2/homebrew/core",
+     "files": {
+      "arm64_golden_gate": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:d048dd4c28d867e939065a3bc8209f37e2a5be3e2c18d18c8c7da8f4d1629a4a",
+       "sha256": "d048dd4c28d867e939065a3bc8209f37e2a5be3e2c18d18c8c7da8f4d1629a4a"
+      },
+      "arm64_tahoe": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:ca67c64d0aaf1e5472790ec2cc081ff7972316f27095d8a8aab81b3321247036",
+       "sha256": "ca67c64d0aaf1e5472790ec2cc081ff7972316f27095d8a8aab81b3321247036"
+      },
+      "arm64_sequoia": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:ef70e236f58a8a781436ee400f9bdf847ad7d12e75115871fb6a94b9214a1a41",
+       "sha256": "ef70e236f58a8a781436ee400f9bdf847ad7d12e75115871fb6a94b9214a1a41"
+      },
+      "arm64_sonoma": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:39f30266edd431962b606353091035a9cec9a61437252f448a3a8cf69dbc0551",
+       "sha256": "39f30266edd431962b606353091035a9cec9a61437252f448a3a8cf69dbc0551"
+      },
+      "sonoma": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:af9ddba2379910ceed96961891002b1c8c133f6f3f290ccb3d7c7d877dd4e9e9",
+       "sha256": "af9ddba2379910ceed96961891002b1c8c133f6f3f290ccb3d7c7d877dd4e9e9"
+      },
+      "arm64_linux": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:d67a00e578f6684163660fed1accb56ef87b01651e37dec737d362d09ece9eab",
+       "sha256": "d67a00e578f6684163660fed1accb56ef87b01651e37dec737d362d09ece9eab"
+      },
+      "x86_64_linux": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/jq/blobs/sha256:631787d9b19df5e5557cc83f972080e541f543f8df2d1f212ca4290ff23e9764",
+       "sha256": "631787d9b19df5e5557cc83f972080e541f543f8df2d1f212ca4290ff23e9764"
+      }
+     }
+    }
+   },
+   "pinned": false,
+   "outdated": false,
+   "dependencies": [
+    "oniguruma"
+   ],
+   "linked_keg": "1.8.2",
+   "installed": [
+    {
+     "version": "1.8.2",
+     "used_options": [],
+     "built_as_bottle": true,
+     "poured_from_bottle": true,
+     "runtime_dependencies": [
+      {
+       "full_name": "oniguruma",
+       "version": "6.9.10",
+       "revision": 0,
+       "pkg_version": "6.9.10",
+       "declared_directly": true
+      }
+     ],
+     "installed_as_dependency": false,
+     "installed_on_request": true
+    }
+   ]
+  },
+  {
+   "name": "oniguruma",
+   "full_name": "oniguruma",
+   "tap": "homebrew/core",
+   "versions": {
+    "stable": "6.9.10",
+    "head": "HEAD",
+    "bottle": true
+   },
+   "revision": 0,
+   "license": "BSD-2-Clause",
+   "bottle": {
+    "stable": {
+     "rebuild": 0,
+     "root_url": "https://ghcr.io/v2/homebrew/core",
+     "files": {
+      "arm64_golden_gate": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:faabe05d9d5379c42d47deba427021e4f40b551b3b95b74675d42e00a8321c23",
+       "sha256": "faabe05d9d5379c42d47deba427021e4f40b551b3b95b74675d42e00a8321c23"
+      },
+      "arm64_tahoe": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:eb6bda3b333f497b5d294388f39fd0902a5c79a52ae16858eff711d2d104cc4d",
+       "sha256": "eb6bda3b333f497b5d294388f39fd0902a5c79a52ae16858eff711d2d104cc4d"
+      },
+      "arm64_sequoia": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:7d6ab71fff646664b91e8ff91744696ec775357787dbc1a28e45d52759662e8d",
+       "sha256": "7d6ab71fff646664b91e8ff91744696ec775357787dbc1a28e45d52759662e8d"
+      },
+      "arm64_sonoma": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:86beadf2205c134bfc642be07b663476532c10591743461c2c64bc85be51afc8",
+       "sha256": "86beadf2205c134bfc642be07b663476532c10591743461c2c64bc85be51afc8"
+      },
+      "arm64_ventura": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:b0c3bbabe91edecb282b400150f05ba77360b5ea0a5950df70f0ae53b79d3d68",
+       "sha256": "b0c3bbabe91edecb282b400150f05ba77360b5ea0a5950df70f0ae53b79d3d68"
+      },
+      "sonoma": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:174fa500f45c9421915e22c34f51abc2849cbce2c05b64f013e4949bf2edd7e0",
+       "sha256": "174fa500f45c9421915e22c34f51abc2849cbce2c05b64f013e4949bf2edd7e0"
+      },
+      "ventura": {
+       "cellar": ":any",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:38ea1c89b9e4fe235788557ce0eaa3812d5287c66b217fe798a95f436c241918",
+       "sha256": "38ea1c89b9e4fe235788557ce0eaa3812d5287c66b217fe798a95f436c241918"
+      },
+      "arm64_linux": {
+       "cellar": ":any_skip_relocation",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:b9c6066f02e365ccac0ca20cbcb8ca5d586c0ae781977d363bd411594946d944",
+       "sha256": "b9c6066f02e365ccac0ca20cbcb8ca5d586c0ae781977d363bd411594946d944"
+      },
+      "x86_64_linux": {
+       "cellar": ":any_skip_relocation",
+       "url": "https://ghcr.io/v2/homebrew/core/oniguruma/blobs/sha256:49eb885ab9a80ce30edc0aaa5f531fc0079a17e5cf41c2b6c34be0e53e763993",
+       "sha256": "49eb885ab9a80ce30edc0aaa5f531fc0079a17e5cf41c2b6c34be0e53e763993"
+      }
+     }
+    }
+   },
+   "pinned": false,
+   "outdated": false,
+   "dependencies": [],
+   "linked_keg": "6.9.10",
+   "installed": [
+    {
+     "version": "6.9.8",
+     "built_as_bottle": true,
+     "poured_from_bottle": true,
+     "runtime_dependencies": [],
+     "installed_as_dependency": true,
+     "installed_on_request": false
+    },
+    {
+     "version": "6.9.10",
+     "built_as_bottle": true,
+     "poured_from_bottle": true,
+     "runtime_dependencies": [],
+     "installed_as_dependency": true,
+     "installed_on_request": false
+    }
+   ]
+  },
+  {
+   "name": "mytool",
+   "full_name": "acme/tools/mytool",
+   "tap": "acme/tools",
+   "versions": {
+    "stable": "2.0"
+   },
+   "revision": 1,
+   "license": null,
+   "bottle": {},
+   "pinned": true,
+   "installed": [
+    {
+     "version": "1.9_1",
+     "poured_from_bottle": false,
+     "runtime_dependencies": [],
+     "installed_on_request": true
+    }
+   ],
+   "linked_keg": "1.9_1"
+  }
+ ],
+ "casks": [
+  {
+   "token": "firefox",
+   "full_token": "firefox",
+   "tap": "homebrew/cask",
+   "version": "131.0.2",
+   "installed": "131.0.2",
+   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "url": "https://download-installer.cdn.mozilla.net/x.dmg",
+   "auto_updates": true
+  },
+  {
+   "token": "google-chrome",
+   "full_token": "google-chrome",
+   "tap": "homebrew/cask",
+   "version": "130.0",
+   "installed": "130.0",
+   "sha256": "no_check",
+   "url": "https://dl.google.com/chrome.dmg",
+   "auto_updates": true
+  },
+  {
+   "token": "notinstalled",
+   "full_token": "notinstalled",
+   "tap": "homebrew/cask",
+   "version": "1",
+   "installed": null
+  }
+ ]
+}

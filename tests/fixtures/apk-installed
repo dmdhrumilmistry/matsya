@@ -1,0 +1,59 @@
+C:Q1Wm3Uq4+lXnHk1hVZLnP7yZ9qkY8=
+P:musl
+V:1.2.5-r0
+A:x86_64
+S:410981
+I:654336
+T:the musl c library (libc) implementation
+U:https://musl.libc.org/
+L:MIT
+o:musl
+m:Natanael Copa <ncopa@alpinelinux.org>
+t:1712238530
+c:c4f7f0e6a2a5b39b7b0d5f3c6c9e1f5b0c3a1d2e
+p:so:libc.musl-x86_64.so.1=1
+F:lib
+R:ld-musl-x86_64.so.1
+a:0:0:755
+Z:Q1abc=
+R:libc.musl-x86_64.so.1
+
+C:Q1oFTbFv6V3xGq9B+d5zGJ+O2bJzE=
+P:busybox
+V:1.36.1-r29
+A:x86_64
+S:509019
+L:GPL-2.0-only
+o:busybox
+c:aaaa
+D:so:libc.musl-x86_64.so.1
+p:cmd:busybox=1.36.1-r29 cmd:sh=1.36.1-r29
+F:bin
+R:busybox
+
+C:Q1xyz=
+P:curl
+V:8.9.1-r0
+A:x86_64
+L:curl
+o:curl
+D:ca-certificates-bundle so:libc.musl-x86_64.so.1 so:libcurl.so.4 !curl-doc
+p:cmd:curl=8.9.1-r0
+
+C:Q1lib=
+P:libcurl
+V:8.9.1-r0
+A:x86_64
+L:curl
+o:curl
+D:so:libc.musl-x86_64.so.1
+p:so:libcurl.so.4=4.8.0
+
+C:Q1ca=
+P:ca-certificates-bundle
+V:20240705-r0
+A:x86_64
+L:MPL-2.0 AND MIT
+o:ca-certificates
+F:etc/apk/keys
+R:alpine-devel@lists.alpinelinux.org-6165ee59.rsa.pub
