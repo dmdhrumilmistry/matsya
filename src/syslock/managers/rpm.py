@@ -51,6 +51,26 @@ def parse_rpm_qa(out: str) -> List[Dict[str, object]]:
     return pkgs
 
 
+# dnf's default installonlypkgs plus zypper's multiversion kernels.
+INSTALLONLY = {"kernel", "kernel-core", "kernel-modules", "kernel-modules-core", "kernel-modules-extra",
+               "kernel-modules-internal", "kernel-devel", "kernel-devel-matched", "kernel-uki-virt",
+               "kernel-uek", "kernel-uek-core", "kernel-uek-modules", "kernel-default", "kernel-default-devel",
+               "kernel-default-extra", "kernel-default-optional", "kernel-PAE", "kernel-rt", "kernel-rt-core",
+               "kernel-tools-libs-devel", "installonlypkg"}
+
+
+def mark_installonly(pkgs: List[Dict[str, object]]) -> None:
+    """Flag packages that may be installed in several versions at once:
+    known install-only names, plus anything that actually is duplicated."""
+    seen: Dict[Tuple[str, str], int] = {}
+    for p in pkgs:
+        k = (str(p["name"]), str(p["arch"]))
+        seen[k] = seen.get(k, 0) + 1
+    for p in pkgs:
+        if p["name"] in INSTALLONLY or seen[(str(p["name"]), str(p["arch"]))] > 1:
+            p["installonly"] = True
+
+
 def srpm_name(srpm: str) -> str:
     """bash-5.2.26-3.fc40.src.rpm -> bash"""
     if not srpm or srpm == "(none)":
@@ -114,9 +134,11 @@ class Rpm(Manager):
 
     def key_of(self, pkg, plat) -> str:
         native = self.arch_of(str(plat.get("arch")))
-        if pkg.get("arch") in (native, NOARCH, ""):
-            return str(pkg["name"])
-        return f"{pkg['name']}.{pkg['arch']}"
+        key = str(pkg["name"]) if pkg.get("arch") in (native, NOARCH, "") else f"{pkg['name']}.{pkg['arch']}"
+        if pkg.get("installonly"):
+            # Several kernels live side by side; each version is its own entry.
+            key += f"-{evr(pkg)}"
+        return key
 
     def _tags(self) -> Set[str]:
         if self._tag_cache is None:
@@ -137,22 +159,24 @@ class Rpm(Manager):
         if not payload:
             for p in pkgs:
                 p.pop("payloadDigest", None)
+        mark_installonly(pkgs)
         if not pkgs and run(["rpm", "-qa"], check=False).strip():
             raise SyslockError("rpm returned packages but none could be parsed; "
                                "please report this with the output of `rpm --version`")
         return pkgs
 
-    def _user_installed(self, fe: Optional[str]) -> Optional[Set[str]]:
-        """Names (name.arch) the user asked for, or None if unknown."""
+    def _user_installed(self, fe: Optional[str]) -> Optional[Tuple[Set[str], bool]]:
+        """(names, inverted) or None if unknown. dnf lists what the user asked
+        for (name.arch); zypper lists what was pulled in automatically."""
         if fe in ("dnf5", "dnf"):
             out = run([fe, "-q", "repoquery", "--userinstalled", "--qf", "%{name}.%{arch}\\n"], check=False)
             names = set(split_lines(out))
-            return names or None
+            return (names, False) if names else None
         if fe == "zypper":
             path = "/var/lib/zypp/AutoInstalled"
             if os.path.exists(path):
                 auto = {ln.strip() for ln in read_text(path).splitlines() if ln.strip() and not ln.startswith("#")}
-                return {"!auto:" + a for a in auto}  # marker: inverted list
+                return auto, True
         return None
 
     def installed(self, plat):
@@ -309,7 +333,12 @@ class Rpm(Manager):
                     plan.unresolved.append(f"{spec} (not in any enabled repository)")
                 continue
             cur = current.get(self.key_of(p, dst_plat))
-            (downgrades if cur and _newer(cur, p) else installs).append(spec)
+            # dnf and zypper move to an exact NEVRA in either direction; only
+            # legacy yum needs an explicit downgrade, decided by rpm itself.
+            if fe == "yum" and cur and _rpm_vercmp(evr(cur), evr(p)) > 0:
+                downgrades.append(spec)
+            else:
+                installs.append(spec)
 
         if fe == "zypper":
             specs = [s for s in installs + downgrades]
@@ -321,7 +350,7 @@ class Rpm(Manager):
             y = [fe, "-y"]
             if installs or local:
                 plan.add(Step(y + ["install", "--allowerasing"] + installs + local,
-                              comment=f"install/upgrade {len(installs) + len(local)} package(s) at locked versions"))
+                              comment=f"install {len(installs) + len(local)} package(s) at locked versions"))
             if downgrades:
                 plan.add(Step(y + ["downgrade", "--allowerasing"] + downgrades,
                               comment=f"downgrade {len(downgrades)} package(s) to locked versions"))
@@ -342,8 +371,10 @@ class Rpm(Manager):
 
         if opts.prune:
             locked = {self.key_of(p, dst_plat) for p in self._translate(section, src_plat, dst_plat)}
-            protected = {"rpm", "dnf", "dnf5", "yum", "zypper", "systemd", "glibc", "kernel", "kernel-core", "filesystem", "setup"}
-            extra = sorted(f"{p['name']}.{p['arch']}" for k, p in current.items() if k not in locked and p["name"] not in protected)
+            protected = {"rpm", "dnf", "dnf5", "yum", "zypper", "systemd", "glibc", "filesystem", "setup"}
+            # Never prune kernels: one of them is the running one.
+            extra = sorted(f"{p['name']}.{p['arch']}" for k, p in current.items()
+                           if k not in locked and p["name"] not in protected and not p.get("installonly"))
             if extra:
                 cmd = ["zypper", "--non-interactive", "remove"] if fe == "zypper" else [fe, "-y", "remove"]
                 plan.add(Step(cmd + extra, comment=f"remove {len(extra)} package(s) not in the lock"))
@@ -352,26 +383,22 @@ class Rpm(Manager):
         return plan
 
 
-def _reason(p, user: Optional[Set[str]]) -> str:
+def _reason(p, user: Optional[Tuple[Set[str], bool]]) -> str:
     if user is None:
         return "manual"
-    na = f"{p['name']}.{p['arch']}"
-    if any(u.startswith("!auto:") for u in user):
-        return "dependency" if ("!auto:" + str(p["name"])) in user else "manual"
-    return "manual" if na in user or p["name"] in user else "dependency"
+    names, inverted = user
+    if inverted:
+        return "dependency" if p["name"] in names else "manual"
+    return "manual" if f"{p['name']}.{p['arch']}" in names or p["name"] in names else "dependency"
 
 
-def _vercmp_key(s: str):
-    """Rough rpmvercmp: split into numeric/alpha runs. Only used to decide
-    between `install` and `downgrade`; the frontend does the real work."""
-    return [(0, int(x)) if x.isdigit() else (1, x) for x in re.findall(r"\d+|[A-Za-z]+", s)]
-
-
-def _newer(a, b) -> bool:
-    ea, eb = int(a.get("epoch") or 0), int(b.get("epoch") or 0)
-    if ea != eb:
-        return ea > eb
-    return _vercmp_key(str(a["version"])) > _vercmp_key(str(b["version"]))
+def _rpm_vercmp(a: str, b: str) -> int:
+    """Compare two EVRs with rpm's own algorithm (via its embedded Lua)."""
+    out = run(["rpm", "--eval", "%%{lua: print(rpm.vercmp(%r, %r))}" % (a, b)], check=False).strip()
+    try:
+        return int(out)
+    except ValueError:
+        return 0
 
 
 def _zypper_spec(spec: str, pkgs) -> str:

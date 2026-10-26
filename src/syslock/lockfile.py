@@ -153,7 +153,8 @@ def validate(data) -> List[str]:
                 if not isinstance(pkg, dict) or not pkg.get("name") or "version" not in pkg:
                     p.append(f"{eid}/{mname}: package #{i} needs name and version")
                     continue
-                k = (pkg["name"], pkg.get("arch", ""), pkg.get("kind", ""))
+                k = (pkg["name"], pkg.get("arch", ""), pkg.get("kind", ""),
+                     pkg.get("version") if pkg.get("installonly") else "")
                 if k in seen:
                     p.append(f"{eid}/{mname}: duplicate package {pkg['name']} ({pkg.get('arch', '')})")
                 seen.add(k)

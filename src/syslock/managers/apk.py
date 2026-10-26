@@ -220,7 +220,10 @@ class Apk(Manager):
             cur = current.get(name, {})
             if cur.get("version") == ver and (p.get("reason") != "manual" or cur.get("reason") == "manual"):
                 continue
-            spec = f"{name}={ver}"
+            tag = str(p.get("worldEntry", ""))
+            tag = tag.split("@", 1)[1] if "@" in tag else ""
+            tag = re.split(r"[<>=~]", tag, maxsplit=1)[0]
+            spec = f"{name}=" + ver
             if index is not None and (name, ver) not in index and current.get(name, {}).get("version") != ver:
                 # Alpine drops superseded versions and has no public archive.
                 if opts.best_effort:
@@ -229,9 +232,9 @@ class Apk(Manager):
                 else:
                     plan.unresolved.append(f"{spec} (Alpine keeps no archive of old versions)")
                     continue
-            tag = str(p.get("worldEntry", ""))
-            if "@" in tag:
-                spec += "@" + tag.split("@", 1)[1].split("=")[0]
+            if tag:
+                # apk syntax is name[@tag][op version]
+                spec = f"{name}@{tag}" + spec[len(name):]
             (roots if p.get("reason") == "manual" else deps).append(spec)
         if deps:
             # A virtual group pins dependencies without listing them in world

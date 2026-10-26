@@ -106,26 +106,94 @@ def _map_token(tok: str) -> Tuple[Optional[str], Optional[str]]:
     return None, tok
 
 
-_SPLIT = re.compile(r"\s+(AND|OR|and|or)\s+|\s*([,;/])\s*")
+_LEX = re.compile(r"[(),;/]|[^\s(),;/]+")
+_OPS = {"and": "AND", "or": "OR"}
 
 
-def _tokens(item: str) -> List[Tuple[str, str]]:
-    """'GPL-2+ or Artistic, MIT' -> [('', 'GPL-2+'), ('OR', 'Artistic'), ('AND', 'MIT')]"""
-    out: List[Tuple[str, str]] = []
-    pos, op = 0, ""
-    for m in _SPLIT.finditer(item):
-        out.append((op, item[pos:m.start()]))
-        op = (m.group(1) or "").upper() or ("OR" if m.group(2) == "/" else "AND")
-        pos = m.end()
-    out.append((op, item[pos:]))
-    return [(o, t.strip("() ")) for o, t in out if t.strip("() ")]
+def _parse_license(item: str):
+    """Parse a license string into a tree: str leaf or (op, [children]).
+
+    Precedence, loosest first: ',' / ';' (DEP-5 lists, optionally followed by
+    'and'/'or'), OR (also '/'), AND, parentheses. Words that are not
+    operators form one name, so 'GPL-3+ with Bison exception' is one leaf."""
+    toks = _LEX.findall(item)
+    pos = 0
+
+    def peek():
+        return toks[pos] if pos < len(toks) else None
+
+    def take():
+        nonlocal pos
+        pos += 1
+        return toks[pos - 1]
+
+    def node(op, a, b):
+        kids = []
+        for x in (a, b):
+            kids.extend(x[1] if isinstance(x, tuple) and x[0] == op else [x])
+        return (op, kids)
+
+    def atom():
+        if peek() == "(":
+            take()
+            inner = lst()
+            if peek() == ")":
+                take()
+            return inner
+        words = []
+        while peek() is not None and peek() not in "(),;/" and peek().lower() not in _OPS:
+            words.append(take())
+        return " ".join(words) if words else None
+
+    def and_expr():
+        left = atom()
+        while peek() is not None and peek().lower() == "and":
+            take()
+            right = atom()
+            left = right if left is None else left if right is None else node("AND", left, right)
+        return left
+
+    def or_expr():
+        left = and_expr()
+        while peek() is not None and (peek().lower() == "or" or peek() == "/"):
+            take()
+            right = and_expr()
+            left = right if left is None else left if right is None else node("OR", left, right)
+        return left
+
+    def lst():
+        left = or_expr()
+        while peek() in (",", ";"):
+            take()
+            op = "AND"
+            if peek() is not None and peek().lower() in _OPS:
+                op = _OPS[take().lower()]
+            right = or_expr()
+            left = right if left is None else left if right is None else node(op, left, right)
+        return left
+
+    tree = lst()
+    while pos < len(toks):  # stray ')' etc.: keep whatever follows as AND
+        take()
+        rest = lst()
+        if rest is not None:
+            tree = rest if tree is None else node("AND", tree, rest)
+    return tree
+
+
+def _leaves(tree) -> List[str]:
+    if tree is None:
+        return []
+    if isinstance(tree, str):
+        return [tree]
+    return [x for k in tree[1] for x in _leaves(k)]
 
 
 def _license_ids(raw: List[str]) -> Tuple[List[str], List[str]]:
     """Split license strings into (spdx ids, unrecognised names)."""
     ids, names = [], []
     for item in raw:
-        for _, tok in _tokens(item):
+        for tok in _leaves(_parse_license(item)):
             i, n = _map_token(tok)
             if i:
                 ids.append(i)
@@ -134,26 +202,32 @@ def _license_ids(raw: List[str]) -> Tuple[List[str], List[str]]:
     return sorted(set(ids)), sorted(set(names))
 
 
+def _render(tree, extracted: Dict[str, str], parent: str = "") -> str:
+    if isinstance(tree, str):
+        i, n = _map_token(tree)
+        if n:
+            i = "LicenseRef-" + _spdx_id(n)
+            extracted[i] = n
+        return str(i)
+    op, kids = tree
+    parts = list(dict.fromkeys(_render(k, extracted, op) for k in kids))
+    out = f" {op} ".join(parts)
+    return f"({out})" if parent and parent != op and len(parts) > 1 else out
+
+
 def _spdx_expression(raw: List[str], extracted: Dict[str, str]) -> str:
-    """Build an SPDX expression that keeps OR choices from the metadata.
+    """SPDX expression preserving the grouping of the source metadata.
     Separate entries (different files of one package) are combined with AND."""
-    parts = []
-    for item in raw:
-        terms = []
-        for op, tok in _tokens(item):
-            i, n = _map_token(tok)
-            if n:
-                i = "LicenseRef-" + _spdx_id(n)
-                extracted[i] = n
-            terms.append((op, i))
-        if not terms:
-            continue
-        expr = terms[0][1]
-        for op, t in terms[1:]:
-            expr += f" {op} {t}"
-        parts.append(f"({expr})" if len(terms) > 1 and len(raw) > 1 else expr)
-    uniq = list(dict.fromkeys(parts))
-    return " AND ".join(uniq) if uniq else "NOASSERTION"
+    trees = [t for t in (_parse_license(item) for item in raw) if t is not None]
+    if not trees:
+        return "NOASSERTION"
+    tree = trees[0]
+    for t in trees[1:]:
+        kids = []
+        for x in (tree, t):
+            kids.extend(x[1] if isinstance(x, tuple) and x[0] == "AND" else [x])
+        tree = ("AND", kids)
+    return _render(tree, extracted)
 
 
 def _hashes(manager: str, pkg: Dict[str, object], plat: Dict[str, object]) -> List[Tuple[str, str]]:

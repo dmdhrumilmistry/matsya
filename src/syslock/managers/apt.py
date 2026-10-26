@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import datetime as _dt
 import glob
 import os
 import re
@@ -307,6 +308,11 @@ class Apt(Manager):
             for k, field in (("o", "origin"), ("l", "label"), ("n", "codename"), ("v", "version")):
                 if rel.get(k):
                     r[field] = rel[k]
+            date = _release_date(t["file"], t["suite"])
+            if date:
+                # The archive's own publication time: the right snapshot to
+                # ask for, independent of when (or with which clock) we ran.
+                r["date"] = date
             src = next((s for s in sources if s["uri"] == t["uri"] and s["suite"] == t["suite"]), None)
             if src:
                 if src["trusted"]:
@@ -394,25 +400,43 @@ class Apt(Manager):
             if a not in have_foreign:
                 plan.add(Step(["dpkg", "--add-architecture", a], comment=f"enable multiarch for {a}"))
         if opts.add_repos:
-            configured = {t["uri"] for t in self._index_targets()}
-            for r in section.get("repositories", []):
-                key = r.get("signedBy") or {}
-                if not key.get("data"):
-                    continue
-                if any(u in configured for u in r.get("uris", [])):
-                    continue
-                safe = re.sub(r"[^A-Za-z0-9]+", "-", str(r["id"])).strip("-").lower()
-                ext = ".asc" if key.get("armored") else ".gpg"
-                kpath = f"/etc/apt/keyrings/syslock-{safe}{ext}"
-                plan.add(Step(comment=f"keyring for {r['id']} (sha256 {key.get('sha256')})",
-                              write={"path": kpath, "content": key["data"], "mode": "644", "encoding": "base64"}))
-                content = (f"Types: deb\nURIs: {r['uris'][0]}\nSuites: {r['suite']}\n"
-                           f"Components: {r['component']}\nSigned-By: {kpath}\n")
-                plan.add(Step(comment=f"add repository {r['id']}",
-                              write={"path": f"/etc/apt/sources.list.d/syslock-{safe}.sources", "content": content}))
+            self._add_repos(plan, section)
         if opts.refresh or plan.steps:
             plan.add(Step(["apt-get", "update"], comment="refresh package indexes"))
         return plan
+
+    def _add_repos(self, plan: Plan, section) -> None:
+        """Recreate missing third-party repositories. apt needs one entry per
+        (URI, suite) with all components and a single Signed-By, otherwise
+        it fails with "Conflicting values set for option Signed-By"."""
+        configured = {t["uri"] for t in self._index_targets()}
+        groups: Dict[Tuple[str, str], Dict[str, object]] = {}
+        for r in section.get("repositories", []):
+            key = r.get("signedBy") or {}
+            if not key.get("data") or not r.get("uris"):
+                continue
+            if any(u in configured for u in r["uris"]):
+                continue
+            g = groups.setdefault((r["uris"][0], r["suite"]), {"components": [], "key": key, "ids": []})
+            if r["component"] and r["component"] not in g["components"]:
+                g["components"].append(r["component"])  # type: ignore[union-attr]
+            g["ids"].append(r["id"])  # type: ignore[union-attr]
+        written: Set[str] = set()
+        for (uri, suite), g in sorted(groups.items()):
+            key: Dict[str, object] = g["key"]  # type: ignore[assignment]
+            ext = ".asc" if key.get("armored") else ".gpg"
+            kpath = f"/etc/apt/keyrings/syslock-{str(key['sha256'])[:16]}{ext}"
+            if kpath not in written:
+                written.add(kpath)
+                plan.add(Step(comment=f"keyring sha256 {key['sha256']}",
+                              write={"path": kpath, "content": str(key["data"]), "mode": "644", "encoding": "base64"}))
+            safe = re.sub(r"[^A-Za-z0-9]+", "-", f"{re.sub(r'^[a-z]+://', '', uri)}-{suite}").strip("-").lower()
+            comps = " ".join(g["components"])  # type: ignore[arg-type]
+            content = f"Types: deb\nURIs: {uri}\nSuites: {suite}\n"
+            content += f"Components: {comps}\n" if comps else ""
+            content += f"Signed-By: {kpath}\n"
+            plan.add(Step(comment="add repository " + ", ".join(g["ids"]),  # type: ignore[arg-type]
+                          write={"path": f"/etc/apt/sources.list.d/syslock-{safe}.sources", "content": content}))
 
     def plan(self, section, src_plat, dst_plat, opts):
         plan = Plan("apt")
@@ -433,7 +457,7 @@ class Apt(Manager):
                 specs.append(f"{name}:{arch}={ver}")
                 continue
             urls = []
-            if opts.snapshot and ts and p.get("filename") and p.get("sha256") and not p.get("_crossArch"):
+            if opts.snapshot and p.get("filename") and p.get("sha256") and not p.get("_crossArch"):
                 urls = _snapshot_urls(p, repos, ts)
             if urls:
                 dest = os.path.join(opts.cache_dir, "apt", os.path.basename(str(p["filename"])))
@@ -549,6 +573,28 @@ def _snapshot_ts(captured_at: str) -> str:
     return "".join(m.groups()[:3]) + "T" + "".join(m.groups()[3:]) + "Z" if m else ""
 
 
+def _release_date(packages_file: str, suite: str) -> str:
+    """Date field of the Release file next to a Packages index, as ISO 8601."""
+    if "_dists_" not in packages_file:
+        return ""  # flat repository
+    base = packages_file[: packages_file.index("_dists_")] + "_dists_" + suite.replace("/", "_")
+    for cand in (base + "_InRelease", base + "_Release"):
+        if not os.path.exists(cand):
+            continue
+        for line in read_text(cand).splitlines():
+            if line.startswith("Date:"):
+                from email.utils import parsedate_to_datetime
+
+                try:
+                    d = parsedate_to_datetime(line[5:].strip())
+                except (TypeError, ValueError):
+                    return ""
+                return d.astimezone(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if line.startswith(("MD5Sum:", "SHA256:", "SHA1:")):
+                break  # past the header (InRelease starts with a PGP armor header)
+    return ""
+
+
 def _snapshot_urls(p, repos, ts: str) -> List[str]:
     urls: List[str] = []
     for rid in p.get("repositories", []):
@@ -556,6 +602,9 @@ def _snapshot_urls(p, repos, ts: str) -> List[str]:
         tpl = SNAPSHOT_BASES.get(str(r.get("origin", "")))
         if not tpl:
             continue
+        # Prefer the repository's publication time; the capture time is a
+        # fallback (it may come from SOURCE_DATE_EPOCH or a merged lock).
+        stamps = [x for x in dict.fromkeys([_snapshot_ts(str(r.get("date", ""))), ts]) if x]
         for uri in r.get("uris", []):
             archive = uri.rstrip("/").rsplit("/", 1)[-1]
             names = [archive]
@@ -564,8 +613,9 @@ def _snapshot_urls(p, repos, ts: str) -> List[str]:
                 names.append("ubuntu-ports")
             elif archive == "ubuntu-ports":
                 names.append("ubuntu")
-            for n in names:
-                u = tpl.format(archive=n, ts=ts) + str(p["filename"])
-                if u not in urls:
-                    urls.append(u)
+            for stamp in stamps:
+                for n in names:
+                    u = tpl.format(archive=n, ts=stamp) + str(p["filename"])
+                    if u not in urls:
+                        urls.append(u)
     return urls

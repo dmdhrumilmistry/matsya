@@ -106,7 +106,13 @@ class Brew(Manager):
         return bool(which("brew"))
 
     def key_of(self, pkg, plat) -> str:
-        return f"{pkg['name']}" if pkg.get("kind") != "cask" else f"cask:{pkg['name']}"
+        if pkg.get("kind") == "cask":
+            return f"cask:{pkg['name']}"
+        name = str(pkg["name"])
+        if name.startswith(PIN_TAP + "/"):
+            # syslock/pins/foo@1.2 is our `brew extract` of foo 1.2.
+            name = name[len(PIN_TAP) + 1:].rsplit("@", 1)[0]
+        return name
 
     def _info_installed(self) -> Dict[str, object]:
         if is_root():
@@ -197,23 +203,32 @@ class Brew(Manager):
         cur_f = self._current([str(p["name"]) for p in formulae], cask=False)
         cur_c = self._current([str(p["name"]) for p in casks], cask=True)
 
+        current = {self.key_of(p, dst_plat): p for p in self.installed(dst_plat)}
         install, extract, cask_install, pins = [], [], [], []
         for p in formulae:
             name, ver = str(p["name"]), str(p["version"])
             cur = cur_f.get(name)
-            if cur and ver in cur["installed"]:
-                continue
-            if cur and cur["version"] == ver:
+            have = current.get(self.key_of(p, dst_plat))
+            target = None  # the formula name that ends up providing it
+            extracted = bool(have) and str(have["name"]).startswith(PIN_TAP + "/")
+            if have and (str(have["version"]) == ver or (extracted and _plain(str(have["version"])) == _plain(ver))):
+                target = str(have["name"])
+            elif cur and ver in cur["installed"]:
+                target = name
+            elif cur and cur["version"] == ver:
                 install.append(name)
+                target = name
             elif cur and opts.snapshot:
                 extract.append((name, ver))
+                target = f"{PIN_TAP}/{name.rsplit('/', 1)[-1]}@{_plain(ver)}"
             elif opts.best_effort:
                 plan.warnings.append(f"{name} {ver} unavailable; installing current version")
                 install.append(name)
+                target = name
             else:
                 plan.unresolved.append(f"{name}@{ver} ({'formula not found' if not cur else 'version is no longer current'})")
-            if p.get("pinned"):
-                pins.append(name)
+            if p.get("pinned") and target and not (have and have.get("pinned")):
+                pins.append(target)
         for p in casks:
             name, ver = str(p["name"]), str(p["version"])
             cur = cur_c.get(name)
@@ -237,7 +252,7 @@ class Brew(Manager):
                           comment="homebrew-core history is needed for brew extract",
                           env={"HOMEBREW_NO_INSTALL_FROM_API": "1"}))
             for name, ver in extract:
-                plain = ver.rsplit("_", 1)[0]
+                plain = _plain(ver)
                 short = name.rsplit("/", 1)[-1]
                 plan.add(Step(["brew", "extract", "--force", f"--version={plain}", name, PIN_TAP],
                               comment=f"recreate {name} {ver}"))
@@ -247,9 +262,9 @@ class Brew(Manager):
         if pins:
             plan.add(Step(["brew", "pin"] + sorted(pins), comment="restore pins"))
         if opts.prune:
-            locked = {str(p["name"]) for p in pkgs}
-            extra = sorted(str(p["name"]) for p in self.installed(dst_plat)
-                           if p.get("reason") == "manual" and p["name"] not in locked)
+            locked = {self.key_of(p, dst_plat) for p in pkgs}
+            extra = sorted(str(p["name"]) for k, p in current.items()
+                           if p.get("reason") == "manual" and k not in locked)
             if extra:
                 plan.add(Step(["brew", "uninstall"] + extra, comment=f"remove {len(extra)} package(s) not in the lock"))
                 plan.add(Step(["brew", "autoremove"], comment="remove orphaned dependencies"))
@@ -272,3 +287,8 @@ class Brew(Manager):
             if p.get("kind") == "cask":
                 lines.append(f'cask "{p["name"]}"  # {p["version"]}')
         return "\n".join(lines) + "\n"
+
+
+def _plain(version: str) -> str:
+    """1.2.3_1 -> 1.2.3 (drop the Homebrew revision suffix)."""
+    return version.rsplit("_", 1)[0]

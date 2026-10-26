@@ -182,8 +182,13 @@ def cmd_diff(args, check: bool = False) -> int:
     for mname, sec in env["managers"].items():
         if only and mname not in only:
             continue
-        result[mname] = diff_sections(mname, sec.get("packages", []), env["platform"],
+        locked = sec.get("packages", [])
+        if getattr(args, "manual_only", False):
+            locked = [p for p in locked if p.get("reason") == "manual"]
+        result[mname] = diff_sections(mname, locked, env["platform"],
                                       current.get(mname, []), cur_plat)
+        if getattr(args, "manual_only", False):
+            result[mname]["extra"] = []  # dependencies are not compared in this mode
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -229,7 +234,7 @@ def cmd_apply(args) -> int:
         if not m or not m.available():
             warn(f"skipping {mname}: not available on this machine")
             continue
-        if mname == "brew" and is_root() and not args.dry_run:
+        if mname == "brew" and is_root():
             warn("skipping brew: Homebrew must not run as root; run `syslock apply --managers brew` as your user")
             continue
         if mname != "brew" and not is_root() and not args.dry_run:
@@ -267,6 +272,9 @@ def cmd_apply(args) -> int:
         return 0
     log("verifying ...")
     args.json, args.all, args.ignore_extra, args.integrity = False, False, not args.prune, False
+    if args.roots_only:
+        # Dependencies were left to the solver, so only the roots must match.
+        args.manual_only, args.ignore_extra = True, True
     return cmd_diff(args, check=True)
 
 
@@ -347,6 +355,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("check", help="exit 1 if the system drifted from the lock (for CI)")
     common(sp)
     sp.add_argument("--ignore-extra", action="store_true", help="packages installed but not locked are fine")
+    sp.add_argument("--roots-only", dest="manual_only", action="store_true",
+                    help="only check manually installed packages (pairs with apply --roots-only)")
     sp.add_argument("--integrity", action="store_true", help="also compare checksums")
     sp.add_argument("--json", action="store_true")
     sp.add_argument("--all", action="store_true")

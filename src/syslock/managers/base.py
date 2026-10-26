@@ -210,6 +210,8 @@ def resolve_dependencies(
     the package managers themselves pick satisfiers.
     """
     satisfiers: Dict[str, List[str]] = {}
+    arch_of = {key_of(p): str(p.get("arch", "")) for p in pkgs}
+    neutral = {"all", "noarch", "any", ""}
     for p in pkgs:
         k = key_of(p)
         satisfiers.setdefault(str(p["name"]), []).append(k)
@@ -222,8 +224,11 @@ def resolve_dependencies(
             for alt in group:
                 cands = satisfiers.get(alt)
                 if cands:
-                    # Prefer a satisfier with the same key suffix (same arch).
-                    deps.add(sorted(cands, key=lambda c: (c != alt, c))[0])
+                    # Prefer a satisfier built for the dependent's architecture
+                    # (libfoo:i386 -> libc6:i386), then arch-neutral ones.
+                    mine = str(p.get("arch", ""))
+                    deps.add(sorted(cands, key=lambda c: (arch_of.get(c) != mine and arch_of.get(c) not in neutral,
+                                                          arch_of.get(c) != mine, c != alt, c))[0])
                     break
         deps.discard(k)
         if deps:

@@ -53,6 +53,15 @@ class AptTests(unittest.TestCase):
         self.assertIn("libc6", libcurl["dependencies"])
         self.assertNotIn("libc6:i386", libcurl["dependencies"])
 
+    def test_multiarch_dependency_prefers_same_arch(self):
+        a = apt.Apt()
+        pkgs = [{"name": "libc6", "arch": "amd64"}, {"name": "libc6", "arch": "i386"},
+                {"name": "libfoo", "arch": "i386"}, {"name": "bar", "arch": "amd64"}]
+        req = {"libfoo:i386": [["libc6"]], "bar": [["libc6"]]}
+        resolve_dependencies(pkgs, req, {}, key_of=lambda p: a.key_of(p, DEB12))
+        self.assertEqual(pkgs[2]["dependencies"], ["libc6:i386"])
+        self.assertEqual(pkgs[3]["dependencies"], ["libc6"])
+
     def test_foreign_arch_key(self):
         a = apt.Apt()
         self.assertEqual(a.key_of({"name": "libc6", "arch": "i386"}, DEB12), "libc6:i386")
@@ -86,6 +95,27 @@ class AptTests(unittest.TestCase):
         insecure = next(e for e in entries if "insecure" in e["uri"])
         self.assertTrue(insecure["trusted"])
         self.assertEqual(insecure["suite"], "./")  # flat repository
+
+    def test_add_repos_groups_components(self):
+        from syslock.managers.base import Plan
+        a = apt.Apt()
+        a._index_targets = lambda: []
+        key = {"sha256": "ab" * 32, "data": "a2V5", "armored": True}
+        section = {"repositories": [
+            {"id": "Docker:bookworm/stable", "uris": ["https://download.docker.com/linux/debian"], "suite": "bookworm",
+             "component": "stable", "signedBy": key},
+            {"id": "Docker:bookworm/test", "uris": ["https://download.docker.com/linux/debian"], "suite": "bookworm",
+             "component": "test", "signedBy": key},
+            {"id": "Debian:stable/main", "uris": ["http://deb.debian.org/debian"], "suite": "bookworm",
+             "component": "main", "signedBy": {"sha256": "x", "package": "debian-archive-keyring"}},
+        ]}
+        plan = Plan("apt")
+        a._add_repos(plan, section)
+        writes = [s.write for s in plan.steps]
+        self.assertEqual(len(writes), 2)  # one keyring, one sources file
+        src = next(w for w in writes if w["path"].endswith(".sources"))
+        self.assertIn("Components: stable test", src["content"])
+        self.assertEqual(src["content"].count("Signed-By:"), 1)
 
     def test_dep5(self):
         self.assertEqual(apt.dep5_licenses(fixture("copyright")), ["MIT", "curl"])
@@ -130,16 +160,25 @@ class RpmTests(unittest.TestCase):
         self.assertEqual(ids, ["docker-ce-stable", "fedora"])  # disabled one skipped, sorted
         self.assertIn("metalink", repos[1])
 
-    def test_newer(self):
-        self.assertTrue(rpm._newer({"version": "1.10-1"}, {"version": "1.9-1"}))
-        self.assertTrue(rpm._newer({"version": "1.0-1", "epoch": 1}, {"version": "9.0-1"}))
-        self.assertFalse(rpm._newer({"version": "1.0-1"}, {"version": "1.0-2"}))
+    def test_installonly_kernels(self):
+        pkgs = [{"name": "kernel-core", "version": "6.10.1-200.fc40", "arch": "x86_64"},
+                {"name": "kernel-core", "version": "6.11.2-300.fc40", "arch": "x86_64"},
+                {"name": "bash", "version": "5.2-1", "arch": "x86_64"},
+                {"name": "dup", "version": "1-1", "arch": "x86_64"}, {"name": "dup", "version": "2-1", "arch": "x86_64"}]
+        rpm.mark_installonly(pkgs)
+        r = rpm.Rpm()
+        keys = [r.key_of(p, {"arch": "x86_64"}) for p in pkgs]
+        self.assertEqual(len(set(keys)), 5)
+        self.assertEqual(keys[2], "bash")
+        self.assertEqual(keys[0], "kernel-core-6.10.1-200.fc40")
 
     def test_user_installed_parsing(self):
-        self.assertEqual(rpm._reason({"name": "a", "arch": "x86_64"}, {"a.x86_64"}), "manual")
-        self.assertEqual(rpm._reason({"name": "b", "arch": "x86_64"}, {"a.x86_64"}), "dependency")
-        self.assertEqual(rpm._reason({"name": "b", "arch": "x86_64"}, {"!auto:b"}), "dependency")
-        self.assertEqual(rpm._reason({"name": "c", "arch": "x86_64"}, {"!auto:b"}), "manual")
+        self.assertEqual(rpm._reason({"name": "a", "arch": "x86_64"}, ({"a.x86_64"}, False)), "manual")
+        self.assertEqual(rpm._reason({"name": "b", "arch": "x86_64"}, ({"a.x86_64"}, False)), "dependency")
+        self.assertEqual(rpm._reason({"name": "b", "arch": "x86_64"}, ({"b"}, True)), "dependency")
+        self.assertEqual(rpm._reason({"name": "c", "arch": "x86_64"}, ({"b"}, True)), "manual")
+        # zypper with an empty AutoInstalled file: everything was asked for
+        self.assertEqual(rpm._reason({"name": "c", "arch": "x86_64"}, (set(), True)), "manual")
         self.assertEqual(rpm._reason({"name": "c", "arch": "x86_64"}, None), "manual")
 
 
@@ -211,6 +250,13 @@ class BrewTests(unittest.TestCase):
         self.assertIn("sha256", casks["firefox"])
         self.assertNotIn("sha256", casks["google-chrome"])  # no_check
         self.assertTrue(casks["google-chrome"]["autoUpdates"])
+
+    def test_extracted_formula_matches_lock(self):
+        b = brew.Brew()
+        self.assertEqual(b.key_of({"name": "syslock/pins/jq@1.7.1", "kind": "formula"}, {}), "jq")
+        self.assertEqual(b.key_of({"name": "syslock/pins/postgresql@16@16.4", "kind": "formula"}, {}), "postgresql@16")
+        self.assertEqual(b.key_of({"name": "python@3.12", "kind": "formula"}, {}), "python@3.12")
+        self.assertEqual(b.key_of({"name": "firefox", "kind": "cask"}, {}), "cask:firefox")
 
     def test_bottle_tag(self):
         self.assertEqual(brew.bottle_tag({"os": "macos", "codename": "sequoia", "arch": "aarch64"}), "arm64_sequoia")

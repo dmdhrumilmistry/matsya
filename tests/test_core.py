@@ -227,6 +227,16 @@ class SbomTests(unittest.TestCase):
         self.assertEqual(ex, {"LicenseRef-Artistic": "Artistic"})
         self.assertEqual(sbom._spdx_expression(["MIT", "GPL-2+ or BSD-3-clause"], {}), "MIT AND (GPL-2.0-or-later OR BSD-3-Clause)")
         self.assertEqual(sbom._spdx_expression([], {}), "NOASSERTION")
+        # grouping survives: AND binds tighter than OR in SPDX
+        self.assertEqual(sbom._spdx_expression(["(MIT OR Apache-2.0) AND Unicode-DFS-2016"], {}),
+                         "(MIT OR Apache-2.0) AND Unicode-DFS-2016")
+        # DEP-5: the comma is the loosest operator and may carry its own and/or
+        ex = {}
+        self.assertEqual(sbom._spdx_expression(["GPL-2+ or AFL-2.1, and Expat"], ex),
+                         "(GPL-2.0-or-later OR AFL-2.1) AND MIT")
+        self.assertEqual(sbom._spdx_expression(["GPL-3+ with Bison exception"], ex), "LicenseRef-GPL-3-with-Bison-exception")
+        self.assertEqual(sbom._spdx_expression(["MIT/X11"], {}), "MIT OR X11")
+        self.assertEqual(sbom._spdx_expression(["MIT) AND (BSD-3-Clause"], {}), "MIT AND BSD-3-Clause")
 
 
 class SchemaValidationTests(unittest.TestCase):

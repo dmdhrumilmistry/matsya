@@ -27,6 +27,8 @@ containers in `.github/workflows/ci.yml`.
 | `+`, `~` in versions (`1.0+dfsg~rc1`) | Kept verbatim. Percent-encoded in purls (`%2B`). |
 | Multiarch (`libc6:amd64` + `libc6:i386`) | Keyed as `name:arch` for foreign archs. `apply` runs `dpkg --add-architecture` first if needed. |
 | Multilib rpm (`glibc.x86_64` + `glibc.i686`) | Keyed as `name.arch` for non-native archs. |
+| Several kernels installed at once (rpm install-only packages) | Marked `installonly` and keyed by version, so each kernel is its own entry. `--prune` never removes kernels. |
+| Multiarch dependency edges (`libfoo:i386` → `libc6`) | Resolved to the satisfier of the same architecture (`libc6:i386`), then to arch-neutral ones. |
 | Same name as formula and cask in Homebrew | Keyed separately (`cask:` prefix); the duplicate check includes `kind`. |
 | Versioned formulae (`postgresql@16`) | The name is kept. `@` is percent-encoded in the purl as the purl spec requires. |
 | Several kegs of one formula installed | The linked keg is recorded and the others are listed in `otherKegs`. |
@@ -34,7 +36,8 @@ containers in `.github/workflows/ci.yml`.
 | Binary NMU (Debian `+b1`, source version differs) | Source name and version recorded separately and exposed as `upstream=` in the purl. |
 | `gpg-pubkey` pseudo-packages in rpm | Excluded. |
 | Alpine virtual packages (`.build-deps`) | Marked `virtual` and recreated with `apk add --virtual` from their members. syslock's own pin group is ignored. |
-| Alpine world entries with tags/constraints (`jq@edge`, `curl=8.9`) | The original entry is kept in `worldEntry`. Repository tags are re-applied on install. |
+| Alpine world entries with tags/constraints (`jq@edge`, `curl=8.9`) | The original entry is kept in `worldEntry`. Repository tags are re-applied on install using apk's `name@tag=version` syntax. |
+| Older Homebrew version rebuilt with `brew extract` | Installed as `syslock/pins/foo@1.2`. `check`, re-applies and `--prune` treat it as `foo`, so it is not reinstalled or removed. Pins go on the formula that was actually installed. |
 
 ## System state
 
@@ -54,13 +57,16 @@ containers in `.github/workflows/ci.yml`.
 | Thousands of packages | Commands are batched to stay under `ARG_MAX`. Apt indexes are streamed rather than fully parsed. |
 | Running as root with Homebrew present | Brew refuses root, so syslock skips brew under root and tells you to run `--managers brew` as your user. |
 | Running `apply` without root | Refused for system managers. `--dry-run` works as any user. |
+| `apply --roots-only` | The final verification and `check --roots-only` compare only manually installed packages, because dependencies were left to the solver. |
+| zypper with an empty `AutoInstalled` file | Every package counts as user-installed (the file lists automatic ones). |
 | No TTY (CI) | `apply` refuses to change anything unless `--yes` is given. |
 
 ## Repositories and archives
 
 | Case | Handling |
 |---|---|
-| Version gone from the mirror (Debian/Ubuntu) | Download from `snapshot.debian.org` / `snapshot.ubuntu.com` at the capture timestamp using the pool path, verify SHA-256, then install the local file in the same apt transaction. |
+| Version gone from the mirror (Debian/Ubuntu) | Download from `snapshot.debian.org` / `snapshot.ubuntu.com` using the pool path, verify SHA-256, then install the local file in the same apt transaction. The snapshot timestamp is the repository's own Release `Date` (recorded per repo), with the capture time as a fallback, so `SOURCE_DATE_EPOCH` or merged locks don't point at the wrong snapshot. |
+| Third-party repo with several components (`stable test`) | `--add-repos` writes one `.sources` entry per URI and suite with all components and a single keyring, which apt requires. |
 | Ubuntu ports vs main archive | Both snapshot archives are tried. |
 | Version gone (Fedora) | Download from Koji. Verified by the rpm payload digest because Koji doesn't publish file hashes in the lock's terms. |
 | Version gone (Arch) | Download from the Arch Linux Archive using the exact recorded filename and SHA-256. Warns about partial upgrades. |
