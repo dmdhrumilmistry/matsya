@@ -76,7 +76,7 @@ jobs:
         with:
           name: matsya-x86_64-unknown-linux-musl
           path: bin
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install "cyclonedx-python-lib[json-validation]" spdx-tools
