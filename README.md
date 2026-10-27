@@ -127,6 +127,13 @@ including when Nix, snapshot mirrors or image digests are the better choice.
 | **zypper** | openSUSE, SLES | ✓ | ✓ | no public archive | Tumbleweed |
 | **apk** | Alpine, Wolfi | ✓ | ✓ | no public archive | Alpine · arm64 |
 | **apt** in Termux | Android (Termux) | ✓ | ✓ | no public archive | termux-docker x86_64 · aarch64 |
+
+**Beyond the package manager**, matsya also records software installed with
+**pip** (and pipx), **npm** `-g`, **cargo install**, **go install**, **gem**,
+**snap** and **flatpak**, executables dropped into `/usr/local/bin` or
+`/opt/*/bin` that no package owns, and macOS apps outside Homebrew
+(including App Store apps). All are read straight from disk; most can be
+reinstalled by `apply`. See [docs/ECOSYSTEMS.md](docs/ECOSYSTEMS.md).
 | **pacman** | Arch, Manjaro, EndeavourOS | ✓ | ✓ | Arch Linux Archive (SHA-256) | Arch |
 | **Homebrew** | macOS, Linux | ✓ | ✓ | `brew extract` from homebrew-core history | macOS · Linux |
 

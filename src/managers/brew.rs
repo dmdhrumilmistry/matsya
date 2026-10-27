@@ -509,6 +509,10 @@ impl Manager for Brew {
         "brew"
     }
 
+    fn root_policy(&self) -> super::RootPolicy {
+        super::RootPolicy::Forbidden
+    }
+
     fn available(&self) -> bool {
         Layout::detect().is_some()
     }

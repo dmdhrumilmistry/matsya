@@ -23,7 +23,7 @@ use std::sync::atomic::Ordering;
 
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum};
 
-use crate::managers::{Manager, Options};
+use crate::managers::{Manager, Options, RootPolicy};
 use crate::model::{Environment, Lockfile, Package};
 use crate::util::{is_root, log, warn, Error, Result};
 
@@ -285,6 +285,9 @@ fn cmd_lock(
     for m in &mgrs {
         log(&format!("capturing {} ...", m.name()));
         match m.capture(&plat, &opts) {
+            // Sources outside the system package manager are only recorded
+            // when something is installed through them.
+            Ok(s) if m.optional() && s.packages.is_empty() && wanted.is_none() => {}
             Ok(s) => {
                 sections.insert(m.name().to_string(), s);
             }
@@ -551,13 +554,18 @@ fn cmd_apply(
             warn(&format!("skipping {name}: not available on this machine"));
             continue;
         };
-        if name == "brew" && is_root() {
-            warn("skipping brew: Homebrew must not run as root; run `matsya apply --managers brew` as your user");
-            continue;
-        }
-        // Termux runs as the app's own user and owns $PREFIX: no root needed.
-        if name != "brew" && !is_root() && !dry_run && plat.distro() != "termux" {
-            crate::bail!("{name} changes need root; re-run with sudo (or use --dry-run to preview)");
+        match m.root_policy() {
+            RootPolicy::Forbidden if is_root() => {
+                warn(&format!(
+                    "skipping {name}: it must not run as root; run `matsya apply --managers {name}` as your user"
+                ));
+                continue;
+            }
+            // Termux runs as the app's own user and owns $PREFIX: no root needed.
+            RootPolicy::Required if !is_root() && !dry_run && plat.distro() != "termux" => {
+                crate::bail!("{name} changes need root; re-run with sudo (or use --dry-run to preview)");
+            }
+            _ => {} // PerPackage: the plan skips what this user cannot change
         }
         selected.push((m, section));
     }

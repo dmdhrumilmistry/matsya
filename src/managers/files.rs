@@ -1,0 +1,270 @@
+//! Executables installed by hand (`make install`, release tarballs,
+//! `curl | sh`) in /usr/local/bin, /usr/local/sbin, /opt/*/bin and Termux's
+//! $PREFIX/bin, i.e. files no package manager owns. Recorded by SHA-256 so
+//! `check` notices when one goes missing or changes. They cannot be
+//! reinstalled automatically.
+
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::path::{Component, Path, PathBuf};
+
+use super::eco::{entries_with_prefix, set_extra};
+use super::{Manager, Options, RootPolicy};
+use crate::model::{Package, Section};
+use crate::plan::Plan;
+use crate::platform::Platform;
+use crate::util::{read_text_opt, sha256_hex, Result};
+
+/// Larger files are still recorded, just not hashed into memory at once.
+const MAX_HASH: u64 = 2 << 30;
+
+pub fn scan_dirs() -> Vec<PathBuf> {
+    let mut v = vec![PathBuf::from("/usr/local/bin"), PathBuf::from("/usr/local/sbin")];
+    for d in entries_with_prefix(Path::new("/opt"), "") {
+        if d.join("bin").is_dir() {
+            v.push(d.join("bin"));
+        }
+    }
+    if let Some(p) = crate::platform::termux_prefix() {
+        v.push(p.join("bin"));
+    }
+    v.into_iter().filter(|d| d.is_dir()).collect()
+}
+
+/// Lexically resolve `..` (for pip RECORD entries like ../../../bin/tool).
+fn normalize(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in p.components() {
+        match c {
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::CurDir => {}
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+/// Paths owned by package managers, limited to the scanned directories.
+pub fn owned_paths(dirs: &[PathBuf]) -> HashSet<PathBuf> {
+    let mut owned = HashSet::new();
+    let wanted = |p: &Path| dirs.iter().any(|d| p.starts_with(d));
+    let add = |p: PathBuf, owned: &mut HashSet<PathBuf>| {
+        if wanted(&p) {
+            owned.insert(p);
+        }
+    };
+    // dpkg: info/*.list
+    let dpkg_info = crate::managers::apt::dpkg_dir().join("info");
+    for f in entries_with_prefix(&dpkg_info, "") {
+        if f.extension().is_some_and(|e| e == "list") {
+            for l in read_text_opt(&f).unwrap_or_default().lines() {
+                add(PathBuf::from(l), &mut owned);
+            }
+        }
+    }
+    // rpm: file lists in the rpmdb headers
+    if let Some(db) = crate::formats::rpmdb::find(Path::new("/")) {
+        for h in crate::formats::rpmdb::read_all(&db).unwrap_or_default() {
+            for f in h.files() {
+                add(PathBuf::from(f), &mut owned);
+            }
+        }
+    }
+    // apk: installed db (F: directory, R: file)
+    for db in ["/lib/apk/db/installed", "/usr/lib/apk/db/installed"] {
+        if let Some(t) = read_text_opt(db) {
+            let mut dir = String::new();
+            for l in t.lines() {
+                if let Some(d) = l.strip_prefix("F:") {
+                    dir = d.to_string();
+                } else if let Some(r) = l.strip_prefix("R:") {
+                    add(PathBuf::from(format!("/{dir}/{r}")), &mut owned);
+                }
+            }
+        }
+    }
+    // pacman: local/*/files
+    for d in entries_with_prefix(Path::new("/var/lib/pacman/local"), "") {
+        for l in read_text_opt(d.join("files")).unwrap_or_default().lines() {
+            if !l.starts_with('%') && !l.is_empty() {
+                add(PathBuf::from(format!("/{l}")), &mut owned);
+            }
+        }
+    }
+    // pip console scripts: RECORD paths relative to site-packages
+    for site in crate::managers::pip::sites() {
+        for di in entries_with_prefix(&site.dir, "") {
+            if !di.to_string_lossy().ends_with(".dist-info") {
+                continue;
+            }
+            for l in read_text_opt(di.join("RECORD")).unwrap_or_default().lines() {
+                let rel = l.split(',').next().unwrap_or("");
+                if rel.contains("bin/") {
+                    add(normalize(&site.dir.join(rel)), &mut owned);
+                }
+            }
+        }
+    }
+    owned
+}
+
+fn is_executable(meta: &std::fs::Metadata) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        meta.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = meta;
+        true
+    }
+}
+
+pub fn scan_in(dirs: &[PathBuf], owned: &HashSet<PathBuf>) -> Vec<Package> {
+    let mut out = Vec::new();
+    for dir in dirs {
+        for f in entries_with_prefix(dir, "") {
+            // Symlinks point into something managed (Homebrew, npm, alternatives).
+            let Ok(meta) = std::fs::symlink_metadata(&f) else { continue };
+            if !meta.file_type().is_file() || !is_executable(&meta) || owned.contains(&f) {
+                continue;
+            }
+            let Ok(bytes) = (if meta.len() <= MAX_HASH { std::fs::read(&f) } else { Ok(Vec::new()) }) else { continue };
+            if bytes.windows(26).take(64).any(|w| w == b"generated by RubyGems.\n#\n#")
+                || bytes.starts_with(b"#!")
+                    && String::from_utf8_lossy(&bytes[..bytes.len().min(400)]).contains("generated by RubyGems")
+            {
+                continue; // gem wrapper scripts belong to the gem section
+            }
+            let sha = sha256_hex(&bytes);
+            let mut p = Package::new(f.display().to_string(), format!("sha256:{}", &sha[..16]));
+            p.kind = Some("file".into());
+            p.reason = Some("manual".into());
+            p.sha256 = Some(sha);
+            p.size = Some(meta.len());
+            let kind = if bytes.starts_with(b"\x7fELF") {
+                "elf"
+            } else if bytes.starts_with(&[0xcf, 0xfa, 0xed, 0xfe]) || bytes.starts_with(&[0xca, 0xfe, 0xba, 0xbe]) {
+                "mach-o"
+            } else if bytes.starts_with(b"#!") {
+                "script"
+            } else {
+                "other"
+            };
+            set_extra(&mut p, "type", kind);
+            // Go programs carry their module and version.
+            if let Some(info) = crate::managers::golang::parse_buildinfo(&bytes) {
+                set_extra(&mut p, "go_module", info.main.path.clone());
+                set_extra(&mut p, "go_module_version", info.main.version.clone());
+            }
+            out.push(p);
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+pub fn scan() -> Vec<Package> {
+    let dirs = scan_dirs();
+    if dirs.is_empty() {
+        return vec![];
+    }
+    scan_in(&dirs, &owned_paths(&dirs))
+}
+
+pub struct Files;
+
+impl Manager for Files {
+    fn name(&self) -> &'static str {
+        "files"
+    }
+
+    fn root_policy(&self) -> RootPolicy {
+        RootPolicy::PerPackage
+    }
+
+    fn optional(&self) -> bool {
+        true
+    }
+
+    fn available(&self) -> bool {
+        !scan_dirs().is_empty()
+    }
+
+    fn installed(&self, _plat: &Platform) -> Result<Vec<Package>> {
+        Ok(scan())
+    }
+
+    fn capture(&self, _plat: &Platform, _opts: &Options) -> Result<Section> {
+        Ok(Section { tool: Some("unmanaged files".into()), packages: scan(), ..Default::default() })
+    }
+
+    /// Nothing to install from: report what differs so a person can act.
+    fn plan(&self, section: &Section, _src: &Platform, _dst: &Platform, opts: &Options) -> Result<Plan> {
+        let mut plan = Plan::new("files");
+        let current: HashMap<String, Package> = scan().into_iter().map(|p| (p.name.clone(), p)).collect();
+        let mut problems = BTreeSet::new();
+        for p in &section.packages {
+            match current.get(&p.name) {
+                None => problems.insert(format!(
+                    "{} is missing (installed outside any package manager; restore it by hand)",
+                    p.name
+                )),
+                Some(c) if c.sha256 != p.sha256 => {
+                    problems.insert(format!("{} differs from the locked file (sha256 {})", p.name, p.version))
+                }
+                _ => false,
+            };
+        }
+        if opts.best_effort {
+            plan.warnings.extend(problems);
+        } else {
+            plan.unresolved.extend(problems);
+        }
+        plan.summary = vec![("checked".into(), section.packages.len()), ("unresolved".into(), plan.unresolved.len())];
+        Ok(plan)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finds_unowned_executables() {
+        let dir = std::env::temp_dir().join(format!("matsya-files-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let w = |n: &str, c: &[u8], exec: bool| {
+            let p = dir.join(n);
+            std::fs::write(&p, c).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&p, std::fs::Permissions::from_mode(if exec { 0o755 } else { 0o644 }))
+                    .unwrap();
+            }
+        };
+        w("tool", b"\x7fELFbinary", true);
+        w("owned", b"#!/bin/sh\n", true);
+        w("notes.txt", b"hello", false);
+        w("rake", b"#!/usr/bin/env ruby\n#\n# This file was generated by RubyGems.\n", true);
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("tool", dir.join("link")).unwrap();
+        let owned: HashSet<PathBuf> = [dir.join("owned")].into_iter().collect();
+        let pkgs = scan_in(std::slice::from_ref(&dir), &owned);
+        let names: Vec<String> = pkgs.iter().map(|p| p.name.rsplit('/').next().unwrap().to_string()).collect();
+        if cfg!(unix) {
+            assert_eq!(names, vec!["tool"]);
+            assert_eq!(super::super::eco::extra_str(&pkgs[0], "type"), Some("elf"));
+            assert!(pkgs[0].version.starts_with("sha256:"));
+        }
+        assert_eq!(
+            normalize(Path::new("/usr/local/lib/python3.12/dist-packages/../../../bin/x")),
+            PathBuf::from("/usr/local/bin/x")
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}

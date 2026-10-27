@@ -8,10 +8,20 @@ use crate::platform::Platform;
 use crate::util::Result;
 
 pub mod apk;
+pub mod apps;
 pub mod apt;
 pub mod brew;
+pub mod cargo;
+pub mod eco;
+pub mod files;
+pub mod flatpak;
+pub mod gem;
+pub mod golang;
+pub mod npm;
 pub mod pacman;
+pub mod pip;
 pub mod rpm;
+pub mod snap;
 
 /// Knobs shared by capture and apply.
 #[derive(Debug, Clone)]
@@ -46,8 +56,28 @@ impl Default for Options {
     }
 }
 
+/// Who may run a manager's `apply` steps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RootPolicy {
+    /// System package managers: changes need root.
+    Required,
+    /// Homebrew: refuses to run as root.
+    Forbidden,
+    /// Decided per package: system-wide installs need root, per-user ones
+    /// must not run as root (the plan skips whichever half does not fit).
+    PerPackage,
+}
+
 pub trait Manager {
     fn name(&self) -> &'static str;
+    fn root_policy(&self) -> RootPolicy {
+        RootPolicy::Required
+    }
+    /// Sources outside the system package manager are only written to the
+    /// lock when they actually have something installed.
+    fn optional(&self) -> bool {
+        false
+    }
     fn available(&self) -> bool;
     /// The lock section for this manager.
     fn capture(&self, plat: &Platform, opts: &Options) -> Result<Section>;
@@ -73,10 +103,20 @@ pub fn all() -> Vec<Box<dyn Manager>> {
         Box::new(apk::Apk),
         Box::new(pacman::Pacman),
         Box::new(brew::Brew),
+        Box::new(pip::Pip),
+        Box::new(npm::Npm),
+        Box::new(cargo::Cargo),
+        Box::new(golang::Go),
+        Box::new(gem::Gem),
+        Box::new(snap::Snap),
+        Box::new(flatpak::Flatpak),
+        Box::new(files::Files),
+        Box::new(apps::Apps),
     ]
 }
 
-pub const NAMES: &[&str] = &["apt", "rpm", "apk", "pacman", "brew"];
+pub const NAMES: &[&str] =
+    &["apt", "rpm", "apk", "pacman", "brew", "pip", "npm", "cargo", "go", "gem", "snap", "flatpak", "files", "apps"];
 
 pub fn get(name: &str) -> Option<Box<dyn Manager>> {
     all().into_iter().find(|m| m.name() == name)

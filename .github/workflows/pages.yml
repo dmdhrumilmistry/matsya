@@ -3,35 +3,178 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "assets/**", ".github/workflows/pages.yml"]
+    paths:
+      - "site/**"
+      - "assets/**"
+      - "docs/**"
+      - "book/**"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "site/**"
+      - "assets/**"
+      - "docs/**"
+      - "book/**"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.5
       - name: Assemble the site
         run: |
           mkdir -p _site/assets
           cp -r site/. _site/
           cp assets/*.svg assets/*.png _site/assets/
+          mdbook build book --dest-dir _site/docs
           touch _site/.nojekyll
-      - uses: actions/configure-pages@v5
+      - name: Check internal links
+        run: |
+          python3 - <<'EOF'
+          import html.parser, os, sys, urllib.parse
+          root = "_site"
+          class P(html.parser.HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.links = []; self.ids = set()
+              def handle_starttag(self, tag, attrs):
+                  a = dict(attrs)
+                  if "id" in a: self.ids.add(a["id"])
+                  for k in ("href", "src"):
+                      if a.get(k): self.links.append(a[k])
+          pages = {}
+          for d, _, files in os.walk(root):
+              for f in files:
+                  if f.endswith(".html"):
+                      p = P(); p.feed(open(os.path.join(d, f), encoding="utf-8").read())
+                      pages[os.path.normpath(os.path.join(d, f))] = p
+          bad = []
+          for path, p in pages.items():
+              if path.endswith("404.html") or path.endswith("print.html"):
+                  continue
+              for link in p.links:
+                  u = urllib.parse.urlparse(link)
+                  if u.scheme or link.startswith(("//", "mailto:", "javascript:")):
+                      continue
+                  target = path if not u.path else os.path.normpath(os.path.join(os.path.dirname(path), u.path))
+                  if os.path.isdir(target):
+                      target = os.path.join(target, "index.html")
+                  if not os.path.exists(target):
+                      bad.append(f"{path}: {link}")
+                  elif u.fragment and target in pages and u.fragment not in pages[target].ids:
+                      bad.append(f"{path}: {link} (missing anchor)")
+          print("\n".join(bad) or "all internal links resolve")
+          sys.exit(1 if bad else 0)
+          EOF
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  screenshots:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # upload-pages-artifact stores the site as a tar named "github-pages".
+      - uses: actions/download-artifact@v5
+        with:
+          name: github-pages
+          path: artifact
+      - name: Unpack the site
+        run: |
+          mkdir -p srv/matsya
+          tar -xf artifact/artifact.tar -C srv/matsya
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          mkdir -p shots-tool && cd shots-tool
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@latest
+          npx playwright install --with-deps chromium
+      - name: Capture screenshots
+        run: |
+          # Serve from a parent directory so the URLs match GitHub Pages (/matsya/...).
+          python3 -m http.server 8000 --bind 127.0.0.1 --directory srv >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/matsya/ >/dev/null && break; sleep 1; done
+          mkdir -p screenshots
+          cat > shots-tool/shoot.mjs <<'EOF'
+          import { chromium } from "playwright";
+          const base = "http://127.0.0.1:8000/matsya/";
+          const desktop = { width: 1440, height: 900 };
+          const mobile = { width: 390, height: 844 };
+          const shots = [
+            { name: "landing-desktop", url: "", viewport: desktop },
+            { name: "landing-mobile", url: "", viewport: mobile, mobile: true },
+            { name: "landing-dark-desktop", url: "", viewport: desktop, scheme: "dark" },
+            { name: "docs-desktop", url: "docs/COMMANDS.html", viewport: desktop },
+            { name: "docs-mobile", url: "docs/COMMANDS.html", viewport: mobile, mobile: true },
+            { name: "docs-light", url: "docs/EDGE_CASES.html", viewport: desktop, theme: "light" },
+            { name: "docs-dark", url: "docs/EDGE_CASES.html", viewport: desktop, theme: "navy" },
+            { name: "docs-intro-desktop", url: "docs/", viewport: desktop },
+          ];
+          const browser = await chromium.launch();
+          let failed = false;
+          for (const s of shots) {
+            const ctx = await browser.newContext({
+              viewport: s.viewport,
+              deviceScaleFactor: s.mobile ? 2 : 1,
+              isMobile: !!s.mobile,
+              hasTouch: !!s.mobile,
+              colorScheme: s.scheme || "light",
+            });
+            if (s.theme) {
+              await ctx.addInitScript((t) => localStorage.setItem("mdbook-theme", t), s.theme);
+            }
+            const page = await ctx.newPage();
+            page.on("pageerror", (e) => { console.error(`${s.name}: page error: ${e.message}`); failed = true; });
+            await page.goto(base + s.url, { waitUntil: "networkidle" });
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+            if (overflow > 0) {
+              console.error(`${s.name}: horizontal overflow of ${overflow}px`);
+              failed = true;
+            }
+            await page.screenshot({ path: `screenshots/${s.name}.png`, fullPage: true });
+            console.log(`captured ${s.name}`);
+            await ctx.close();
+          }
+          await browser.close();
+          if (failed) console.error("::warning::layout or script problems found, see the log above");
+          EOF
+          node shots-tool/shoot.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-screenshots
+          path: screenshots/
+          if-no-files-found: warn
