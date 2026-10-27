@@ -1,0 +1,42 @@
+# mdBook configuration for the matsya documentation.
+#
+# The pages live in ../docs so they also read well on GitHub.
+# Build locally with:  mdbook build book      (output: target/book)
+# Preview with:        mdbook serve book --open
+# CI publishes the output at https://dmdhrumilmistry.github.io/matsya/docs/
+
+[book]
+title = "matsya docs"
+description = "Lock files and SBOMs for OS package managers: apt, dnf, yum, zypper, apk, pacman, Homebrew and Termux."
+authors = ["Dhrumil Mistry"]
+language = "en"
+src = "../docs"
+
+[build]
+build-dir = "../target/book"
+create-missing = false
+
+[output.html]
+site-url = "/matsya/docs/"
+default-theme = "light"
+preferred-dark-theme = "navy"
+additional-css = ["theme/matsya.css"]
+additional-js = ["theme/matsya.js"]
+git-repository-url = "https://github.com/dmdhrumilmistry/matsya"
+git-repository-icon = "fab-github"
+edit-url-template = "https://github.com/dmdhrumilmistry/matsya/edit/main/docs/{path}"
+smart-punctuation = false
+no-section-label = false
+
+[output.html.fold]
+enable = false
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 3

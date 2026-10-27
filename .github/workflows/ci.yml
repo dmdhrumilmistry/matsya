@@ -66,6 +66,27 @@ jobs:
           name: matsya-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/matsya
 
+  ecosystems:
+    name: pip, npm, gem, cargo, go, files
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: matsya-x86_64-unknown-linux-musl
+          path: bin
+      - run: chmod +x bin/matsya && mkdir -p out && chmod 777 out
+      - name: Capture, drift, repair
+        run: docker run --rm -v "$PWD:/src" debian:trixie sh /src/ci/eco.sh capture /src/out/eco.lock.json
+      - name: Restore on a fresh container
+        run: docker run --rm -v "$PWD:/src" debian:trixie sh /src/ci/eco.sh restore /src/out/eco.lock.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lock-ecosystems
+          path: out/
+
   build-android:
     name: build (${{ matrix.target }})
     runs-on: ubuntu-latest

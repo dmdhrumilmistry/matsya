@@ -132,13 +132,71 @@ pub fn purl(manager: &str, pkg: &Package, plat: &Platform) -> String {
             name = pkg.name.rsplit('/').next().unwrap_or(&pkg.name).to_ascii_lowercase();
             "brew"
         }
+        // Software outside the system package manager: language ecosystems
+        // have their own purl types, the rest is "generic".
+        "pip" => {
+            ns = String::new();
+            name = crate::managers::pip::normalize(&pkg.name);
+            "pypi"
+        }
+        "npm" => {
+            ns = String::new();
+            if let Some((scope, n)) = pkg.name.split_once('/').filter(|_| pkg.name.starts_with('@')) {
+                ns = scope.to_string();
+                name = n.to_string();
+            }
+            "npm"
+        }
+        "cargo" => {
+            ns = String::new();
+            "cargo"
+        }
+        "gem" => {
+            ns = String::new();
+            "gem"
+        }
+        "go" => {
+            // pkg:golang/github.com/rakyll/hey@v0.1.4
+            let (n, last) = pkg.name.rsplit_once('/').unwrap_or(("", &pkg.name));
+            ns = n.to_string();
+            name = last.to_string();
+            "golang"
+        }
+        "snap" => {
+            ns = "snap".into();
+            if let Some(r) = pkg.extra.get("revision").and_then(|v| v.as_str()) {
+                quals.push(("revision".into(), r.into()));
+            }
+            "generic"
+        }
+        "flatpak" => {
+            ns = "flatpak".into();
+            quals = vec![arch()];
+            if let Some(c) = &pkg.checksum {
+                quals.push(("commit".into(), c.clone()));
+            }
+            "generic"
+        }
+        "files" => {
+            ns = String::new();
+            name = pkg.name.rsplit('/').next().unwrap_or(&pkg.name).to_string();
+            quals.push(("path".into(), pkg.name.clone()));
+            "generic"
+        }
+        "apps" => {
+            ns = "macos-app".into();
+            if let Some(id) = pkg.extra.get("bundle_id").and_then(|v| v.as_str()) {
+                quals.push(("bundle_id".into(), id.into()));
+            }
+            "generic"
+        }
         _ => "generic",
     };
     let mut out = format!("pkg:{typ}/");
     if !ns.is_empty() {
         let segs: Vec<String> = ns
             .split('/')
-            .map(|s| pct(&if typ == "brew" { s.to_ascii_lowercase() } else { s.to_string() }, ""))
+            .map(|s| pct(&if typ == "brew" || typ == "npm" { s.to_ascii_lowercase() } else { s.to_string() }, ""))
             .collect();
         out += &(segs.join("/") + "/");
     }
@@ -147,7 +205,11 @@ pub fn purl(manager: &str, pkg: &Package, plat: &Platform) -> String {
     quals.sort();
     if !quals.is_empty() {
         out += &("?".to_string()
-            + &quals.iter().map(|(k, v)| format!("{k}={}", pct(v, ":"))).collect::<Vec<_>>().join("&"));
+            + &quals
+                .iter()
+                .map(|(k, v)| format!("{k}={}", pct(v, if k == "path" { ":/" } else { ":" })))
+                .collect::<Vec<_>>()
+                .join("&"));
     }
     out
 }
@@ -359,23 +421,43 @@ pub fn spdx_expression(raw: &[String], extracted: &mut BTreeMap<String, String>)
 
 // ------------------------------------------------------------ documents
 
-fn hashes(manager: &str, p: &Package, plat: &Platform) -> Option<String> {
+/// The best hash a lock entry has: (CycloneDX algorithm, hex value).
+fn hashes(manager: &str, p: &Package, plat: &Platform) -> Option<(&'static str, String)> {
     if let Some(s) = &p.sha256 {
-        return Some(s.clone());
+        return Some(("SHA-256", s.clone()));
     }
     if manager == "brew" {
         if let Some(b) = &p.bottles {
             if let Some(h) = b.get(&managers::brew::bottle_tag(plat)).or_else(|| b.get("all")) {
-                return Some(h.clone());
+                return Some(("SHA-256", h.clone()));
             }
         }
     }
     if manager == "rpm" {
         if let Some(d) = p.payload_digest.as_ref().filter(|d| d.len() == 64) {
-            return Some(d.clone());
+            return Some(("SHA-256", d.clone()));
+        }
+    }
+    // npm's Subresource Integrity strings: "sha512-<base64>"
+    if let Some((alg, hex)) = p.extra.get("integrity").and_then(|v| v.as_str()).and_then(managers::npm::integrity_hex) {
+        match alg.as_str() {
+            "SHA512" => return Some(("SHA-512", hex)),
+            "SHA256" => return Some(("SHA-256", hex)),
+            _ => {}
         }
     }
     None
+}
+
+/// CycloneDX component type for a lock entry.
+fn component_type(manager: &str, p: &Package) -> &'static str {
+    match (manager, p.kind()) {
+        ("files", _) => "file",
+        ("apps", _) | ("brew", "cask") | ("go", "binary") | ("cargo", _) | ("pip", "pipx") => "application",
+        ("snap", "app") => "application",
+        ("flatpak", k) if k.starts_with("app/") => "application",
+        _ => "library",
+    }
 }
 
 fn iter_pkgs(env: &Environment) -> impl Iterator<Item = (&String, &Package)> {
@@ -405,11 +487,11 @@ pub fn cyclonedx(eid: &str, env: &Environment) -> Value {
             continue;
         }
         let mut c = json!({
-            "type": if p.kind() == "cask" { "application" } else { "library" },
+            "type": component_type(m, p),
             "bom-ref": r, "name": p.name, "version": p.full_version(), "purl": r,
         });
-        if let Some(h) = hashes(m, p, plat) {
-            c["hashes"] = json!([{"alg": "SHA-256", "content": h}]);
+        if let Some((alg, h)) = hashes(m, p, plat) {
+            c["hashes"] = json!([{"alg": alg, "content": h}]);
         }
         let (ids, names) = license_ids(&p.licenses);
         let lic: Vec<Value> = ids
@@ -517,13 +599,17 @@ pub fn spdx(eid: &str, env: &Environment) -> Value {
         id_of.insert(r.clone(), sid.clone());
         let mut pk = json!({
             "SPDXID": sid, "name": p.name, "versionInfo": p.full_version(), "downloadLocation": "NOASSERTION",
-            "filesAnalyzed": false, "primaryPackagePurpose": if p.kind() == "cask" { "APPLICATION" } else { "LIBRARY" },
+            "filesAnalyzed": false, "primaryPackagePurpose": match component_type(m, p) {
+                "application" => "APPLICATION",
+                "file" => "FILE",
+                _ => "LIBRARY",
+            },
             "copyrightText": "NOASSERTION", "licenseConcluded": "NOASSERTION",
             "licenseDeclared": spdx_expression(&p.licenses, &mut extracted),
             "externalRefs": [{"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": r}],
         });
-        if let Some(h) = hashes(m, p, plat) {
-            pk["checksums"] = json!([{"algorithm": "SHA256", "checksumValue": h}]);
+        if let Some((alg, h)) = hashes(m, p, plat) {
+            pk["checksums"] = json!([{"algorithm": alg.replace('-', ""), "checksumValue": h}]);
         }
         packages.push(pk);
         rels.push(json!({"spdxElementId": os_id, "relationshipType": "CONTAINS", "relatedSpdxElement": sid}));
@@ -611,6 +697,25 @@ mod tests {
         ff.kind = Some("cask".into());
         ff.tap = Some("homebrew/cask".into());
         assert_eq!(purl("brew", &ff, &mac), "pkg:brew/homebrew/cask/firefox@131.0");
+    }
+
+    #[test]
+    fn ecosystem_purls() {
+        let any = Platform::default();
+        let mk = |n: &str, v: &str| Package::new(n, v);
+        assert_eq!(purl("pip", &mk("Foo_Bar", "1.0"), &any), "pkg:pypi/foo-bar@1.0");
+        assert_eq!(purl("npm", &mk("@Angular/cli", "17.0.0"), &any), "pkg:npm/%40angular/cli@17.0.0");
+        assert_eq!(purl("npm", &mk("cowsay", "1.6.0"), &any), "pkg:npm/cowsay@1.6.0");
+        assert_eq!(purl("cargo", &mk("ripgrep", "14.1.0"), &any), "pkg:cargo/ripgrep@14.1.0");
+        assert_eq!(purl("go", &mk("github.com/rakyll/hey", "v0.1.4"), &any), "pkg:golang/github.com/rakyll/hey@v0.1.4");
+        assert_eq!(purl("gem", &mk("rails", "7.1.3"), &any), "pkg:gem/rails@7.1.3");
+        assert_eq!(
+            purl("files", &mk("/usr/local/bin/tool", "sha256:abcd"), &any),
+            "pkg:generic/tool@sha256:abcd?path=/usr/local/bin/tool"
+        );
+        let mut snap = mk("jq", "1.5");
+        snap.extra.insert("revision".into(), json!("6"));
+        assert_eq!(purl("snap", &snap, &any), "pkg:generic/snap/jq@1.5?revision=6");
     }
 
     #[test]
