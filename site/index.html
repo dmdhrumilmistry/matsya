@@ -360,6 +360,19 @@ matsya: drift detected</pre>
       </div>
     </section>
 
+    <section id="beyond" aria-labelledby="beyond-title">
+      <div class="wrap">
+        <h2 id="beyond-title">Beyond the package manager</h2>
+        <p class="section-lead">A machine is more than its distro packages. matsya records the tools you installed by other means too, in the same lock and SBOM, read straight from disk.</p>
+        <div class="features">
+          <div class="feature"><h3>Language tools</h3><p><b>pip</b> and pipx, <b>npm</b> <code>-g</code>, <b>cargo install</b>, <b>go install</b> and <b>gem</b>, system-wide or per user. <code>apply</code> reinstalls the exact versions.</p></div>
+          <div class="feature"><h3>App stores</h3><p><b>snap</b> revisions and <b>flatpak</b> apps pinned to their deployed commit, for the whole system or one user.</p></div>
+          <div class="feature"><h3>Everything else</h3><p>Binaries dropped into <code>/usr/local/bin</code> or <code>/opt</code> (by SHA-256) and macOS apps outside Homebrew, including the App Store. <code>check</code> tells you when one changes.</p></div>
+        </div>
+        <p class="table-note">How each source is read and rebuilt: <a href="docs/ECOSYSTEMS.html">Beyond the package manager</a>.</p>
+      </div>
+    </section>
+
     <section id="compare" aria-labelledby="compare-title">
       <div class="wrap">
         <h2 id="compare-title">How it compares</h2>
