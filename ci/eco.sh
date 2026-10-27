@@ -45,7 +45,7 @@ if [ "$PHASE" = capture ]; then
   echo "== drift: remove system pip/npm/gem packages"
   pip uninstall -y -q --break-system-packages six
   npm uninstall -g --silent is-number
-  gem uninstall -x rake -v 13.2.1
+  gem uninstall -x -I rake -v 13.2.1 || true  # Debian also ships a vendor rake
   expect_fail env SUDO_USER=dev $M check -f "$LOCK"
   SUDO_USER=dev $M apply -f "$LOCK" --yes --no-refresh -m pip,npm,gem,files
   SUDO_USER=dev $M check -f "$LOCK"
