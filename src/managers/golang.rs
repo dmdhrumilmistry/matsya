@@ -172,6 +172,11 @@ impl Manager for Go {
         true
     }
 
+    /// Go programs live in the user's GOBIN.
+    fn scope_of(&self, _pkg: &Package) -> super::eco::Scope {
+        super::eco::Scope::User
+    }
+
     fn available(&self) -> bool {
         !bin_dirs().is_empty() || has("go")
     }

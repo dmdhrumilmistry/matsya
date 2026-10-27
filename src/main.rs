@@ -84,6 +84,10 @@ struct DiffArgs {
     /// Do not truncate long lists
     #[arg(long)]
     all: bool,
+    /// Set by apply's final verification: packages of this scope (from
+    /// per-package sources) were not this run's job and are not compared.
+    #[arg(skip)]
+    skip_scope: Option<managers::eco::Scope>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -440,15 +444,16 @@ fn cmd_diff(a: &DiffArgs, check: bool) -> Result<i32> {
         if only.as_ref().is_some_and(|o| !o.contains(name)) {
             continue;
         }
-        let locked: Vec<Package> = sec.packages.iter().filter(|p| !a.roots_only || p.is_manual()).cloned().collect();
         let mgr = managers::get(name);
-        let mut d = diff::diff_sections(
-            mgr.as_deref(),
-            &locked,
-            &env.platform,
-            current.get(name).map(Vec::as_slice).unwrap_or(&[]),
-            &cur_plat,
-        );
+        let out_of_scope = |p: &Package| match (&mgr, a.skip_scope) {
+            (Some(m), Some(skip)) => m.root_policy() == RootPolicy::PerPackage && m.scope_of(p) == skip,
+            _ => false,
+        };
+        let locked: Vec<Package> =
+            sec.packages.iter().filter(|p| (!a.roots_only || p.is_manual()) && !out_of_scope(p)).cloned().collect();
+        let cur: Vec<Package> =
+            current.get(name).map(|v| v.iter().filter(|p| !out_of_scope(p)).cloned().collect()).unwrap_or_default();
+        let mut d = diff::diff_sections(mgr.as_deref(), &locked, &env.platform, &cur, &cur_plat);
         if a.roots_only {
             d.extra.clear(); // dependencies are not compared in this mode
         }
@@ -626,6 +631,15 @@ fn cmd_apply(
         roots_only,
         json: false,
         all: false,
+        // Root applies system-wide installs, a normal user per-user ones;
+        // the other half is reported by apply and checked by `matsya check`.
+        skip_scope: if platform::termux_prefix().is_some() {
+            None
+        } else if is_root() {
+            Some(managers::eco::Scope::User)
+        } else {
+            Some(managers::eco::Scope::System)
+        },
     };
     cmd_diff(&args, true)
 }

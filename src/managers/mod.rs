@@ -78,6 +78,11 @@ pub trait Manager {
     fn optional(&self) -> bool {
         false
     }
+    /// Whether a package of a per-package source is installed system-wide
+    /// or for one user (decides who may apply it).
+    fn scope_of(&self, pkg: &Package) -> eco::Scope {
+        eco::Scope::of(pkg)
+    }
     fn available(&self) -> bool;
     /// The lock section for this manager.
     fn capture(&self, plat: &Platform, opts: &Options) -> Result<Section>;
