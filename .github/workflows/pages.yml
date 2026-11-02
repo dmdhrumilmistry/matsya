@@ -81,7 +81,7 @@ jobs:
           print("\n".join(bad) or "all internal links resolve")
           sys.exit(1 if bad else 0)
           EOF
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
