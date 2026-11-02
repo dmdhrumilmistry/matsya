@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # upload-pages-artifact stores the site as a tar named "github-pages".
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: github-pages
           path: artifact
