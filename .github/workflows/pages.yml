@@ -172,7 +172,7 @@ jobs:
           if (failed) console.error("::warning::layout or script problems found, see the log above");
           EOF
           node shots-tool/shoot.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: site-screenshots
